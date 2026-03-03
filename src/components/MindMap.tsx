@@ -38,16 +38,24 @@ export default function MindMap({ projects }: MindMapProps) {
   const handleAddProject = () => {
     addProject({
       name: '새 프로젝트',
+      projectNo: '',
       description: '',
       status: 'planning',
-      startDate: '',
-      endDate: '',
+      contractDate: '',
+      komDate: '',
+      deliveryDate: '',
       client: '',
       color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
       hidden: false,
       budgetKRW: 0,
       budgetUSD: 0,
       exchangeRate: 1350,
+      targetGM: 0,
+      currentGM: 0,
+      engineeringHours: { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+      directCost: 0,
+      contingency: 0,
+      needsFactoryManagement: false,
     });
   };
 
@@ -85,9 +93,9 @@ export default function MindMap({ projects }: MindMapProps) {
                 onSave={v => updateProject(p.id, { status: v as ProjectStatus })}
               />
               <div className="panel-item-dates">
-                <EditableCell value={p.startDate} type="date" onSave={v => updateProject(p.id, { startDate: v })} placeholder="시작일" />
+                <EditableCell value={p.contractDate || ''} type="date" onSave={v => updateProject(p.id, { contractDate: v })} placeholder="계약일" />
                 <span>~</span>
-                <EditableCell value={p.endDate} type="date" onSave={v => updateProject(p.id, { endDate: v })} placeholder="종료일" />
+                <EditableCell value={p.deliveryDate || ''} type="date" onSave={v => updateProject(p.id, { deliveryDate: v })} placeholder="납기일" />
               </div>
               <div className="panel-item-actions">
                 <button className="btn-icon" onClick={() => toggleHideProject(p.id)} title={p.hidden ? '표시' : '숨김'}>

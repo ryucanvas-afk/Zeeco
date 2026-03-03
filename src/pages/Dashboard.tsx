@@ -12,7 +12,7 @@ export default function Dashboard() {
   );
   const inProgressProjects = visibleProjects.filter(p => p.status === 'in_progress').length;
   const allPurchases = visibleProjects.flatMap(p => p.items.flatMap(i => i.purchases));
-  const pendingPurchases = allPurchases.filter(p => p.status === 'pending' || p.status === 'ordered').length;
+  const pendingPurchases = allPurchases.filter(p => p.status !== 'delivered' && p.status !== 'partial_delivered').length;
 
   return (
     <div className="dashboard">
@@ -77,7 +77,7 @@ export default function Dashboard() {
                     <td>{project.client}</td>
                     <td><ProjectStatusBadge status={project.status} /></td>
                     <td>{items}</td>
-                    <td>{project.startDate} ~ {project.endDate}</td>
+                    <td>{project.contractDate || '-'} ~ {project.deliveryDate || '-'}</td>
                     <td>
                       <div className="progress-cell">
                         <div className="progress-bar-bg">
