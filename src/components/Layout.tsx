@@ -5,7 +5,7 @@ export default function Layout() {
     <div className="app-layout">
       <header className="app-header">
         <div className="header-left">
-          <h1 className="logo">ZEECO</h1>
+          <h1 className="logo" style={{ color: '#ef4444' }}>ZEECO</h1>
           <span className="logo-sub">Project Management</span>
         </div>
         <nav className="header-nav">

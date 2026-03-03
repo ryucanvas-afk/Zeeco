@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { Project, Purchase, PurchaseStatus } from '../types';
+import type { Project, Purchase } from '../types';
 import { useProjects } from '../context/ProjectContext';
+import EditableCell from './EditableCell';
 import { PurchaseStatusBadge } from './StatusBadge';
 
 interface PurchaseTabProps {
@@ -8,11 +9,13 @@ interface PurchaseTabProps {
 }
 
 const emptyPurchase: Omit<Purchase, 'id' | 'itemId'> = {
+  orderNumber: '',
   partName: '',
   specification: '',
   quantity: 0,
   unit: 'EA',
   supplier: '',
+  team: '',
   orderDate: '',
   expectedDelivery: '',
   actualDelivery: '',
@@ -22,19 +25,29 @@ const emptyPurchase: Omit<Purchase, 'id' | 'itemId'> = {
   notes: '',
 };
 
+const purchaseStatusOptions = [
+  { value: 'pending', label: '발주 대기' },
+  { value: 'ordered', label: '발주 완료' },
+  { value: 'shipped', label: '운송 중' },
+  { value: 'delivered', label: '입고 완료' },
+  { value: 'cancelled', label: '취소' },
+];
+
+const currencyOptions = [
+  { value: 'KRW', label: 'KRW' },
+  { value: 'USD', label: 'USD' },
+  { value: 'EUR', label: 'EUR' },
+];
+
 export default function PurchaseTab({ project }: PurchaseTabProps) {
   const { addPurchase, updatePurchase, deletePurchase } = useProjects();
   const [selectedItemId, setSelectedItemId] = useState<string>(project.items[0]?.id || '');
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(emptyPurchase);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'all' | 'item'>('all');
 
   const allPurchases = project.items.flatMap(item =>
-    item.purchases.map(p => ({ ...p, itemName: item.name, itemCategory: item.category, parentItemId: item.id }))
+    item.purchases.map(p => ({ ...p, itemName: item.name, parentItemId: item.id }))
   );
-
-  const displayPurchases = viewMode === 'all' ? allPurchases : allPurchases.filter(p => p.parentItemId === selectedItemId);
 
   const statusSummary = {
     pending: allPurchases.filter(p => p.status === 'pending').length,
@@ -49,42 +62,18 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItemId) return;
-    if (editingId) {
-      const parentItem = allPurchases.find(p => p.id === editingId);
-      if (parentItem) {
-        updatePurchase(project.id, parentItem.parentItemId, editingId, formData);
-      }
-      setEditingId(null);
-    } else {
-      addPurchase(project.id, selectedItemId, formData);
-    }
+    addPurchase(project.id, selectedItemId, formData);
     setFormData(emptyPurchase);
     setShowForm(false);
   };
 
-  const handleEdit = (purchase: (typeof allPurchases)[0]) => {
-    setFormData({
-      partName: purchase.partName,
-      specification: purchase.specification,
-      quantity: purchase.quantity,
-      unit: purchase.unit,
-      supplier: purchase.supplier,
-      orderDate: purchase.orderDate,
-      expectedDelivery: purchase.expectedDelivery,
-      actualDelivery: purchase.actualDelivery,
-      status: purchase.status,
-      unitPrice: purchase.unitPrice,
-      currency: purchase.currency,
-      notes: purchase.notes,
-    });
-    setSelectedItemId(purchase.parentItemId);
-    setEditingId(purchase.id);
-    setShowForm(true);
+  const handleInlineUpdate = (purchaseId: string, parentItemId: string, field: string, value: string | number) => {
+    updatePurchase(project.id, parentItemId, purchaseId, { [field]: value });
   };
 
   return (
     <div className="purchase-tab">
-      {/* Summary Cards */}
+      {/* Summary */}
       <div className="summary-cards">
         <div className="summary-card">
           <div className="summary-value">{allPurchases.length}</div>
@@ -115,30 +104,11 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
         </div>
       </div>
 
-      {/* Purchase Table */}
+      {/* Add Form */}
       <div className="section-card">
         <div className="section-header">
           <h3 className="section-title">구매 발주 현황</h3>
-          <div className="section-actions">
-            <div className="toggle-group">
-              <button className={`toggle-btn ${viewMode === 'all' ? 'active' : ''}`} onClick={() => setViewMode('all')}>전체</button>
-              <button className={`toggle-btn ${viewMode === 'item' ? 'active' : ''}`} onClick={() => setViewMode('item')}>품목별</button>
-            </div>
-            {viewMode === 'item' && (
-              <select
-                value={selectedItemId}
-                onChange={(e) => setSelectedItemId(e.target.value)}
-                className="item-select"
-              >
-                {project.items.map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({item.category})</option>
-                ))}
-              </select>
-            )}
-            <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditingId(null); setFormData(emptyPurchase); }}>
-              + 발주 추가
-            </button>
-          </div>
+          <button className="btn btn-primary" onClick={() => { setShowForm(true); setFormData(emptyPurchase); }}>+ 발주 추가</button>
         </div>
 
         {showForm && (
@@ -151,6 +121,10 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                     <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
                 </select>
+              </div>
+              <div className="form-group">
+                <label>발주 넘버</label>
+                <input type="text" value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} placeholder="PO-2026-XXX" />
               </div>
               <div className="form-group">
                 <label>부품명</label>
@@ -173,26 +147,8 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                 <input type="text" value={formData.supplier} onChange={e => setFormData({ ...formData, supplier: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>발주일</label>
-                <input type="date" value={formData.orderDate} onChange={e => setFormData({ ...formData, orderDate: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>납기 예정일</label>
-                <input type="date" value={formData.expectedDelivery} onChange={e => setFormData({ ...formData, expectedDelivery: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>실제 입고일</label>
-                <input type="date" value={formData.actualDelivery} onChange={e => setFormData({ ...formData, actualDelivery: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>상태</label>
-                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as PurchaseStatus })}>
-                  <option value="pending">발주 대기</option>
-                  <option value="ordered">발주 완료</option>
-                  <option value="shipped">운송 중</option>
-                  <option value="delivered">입고 완료</option>
-                  <option value="cancelled">취소</option>
-                </select>
+                <label>담당 팀</label>
+                <input type="text" value={formData.team} onChange={e => setFormData({ ...formData, team: e.target.value })} />
               </div>
               <div className="form-group">
                 <label>단가</label>
@@ -206,69 +162,108 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                   <option value="EUR">EUR</option>
                 </select>
               </div>
-              <div className="form-group full-width">
-                <label>비고</label>
-                <input type="text" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
-              </div>
             </div>
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary">{editingId ? '수정' : '추가'}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); }}>취소</button>
+              <button type="submit" className="btn btn-primary">추가</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>취소</button>
             </div>
           </form>
         )}
 
-        <div className="table-wrapper">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {viewMode === 'all' && <th>품목</th>}
-                <th>부품명</th>
-                <th>사양</th>
-                <th>수량</th>
-                <th>공급업체</th>
-                <th>발주일</th>
-                <th>납기 예정</th>
-                <th>입고일</th>
-                <th>상태</th>
-                <th>금액</th>
-                <th>비고</th>
-                <th>관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayPurchases.map(purchase => (
-                <tr key={purchase.id} className={purchase.status === 'delivered' ? 'row-completed' : ''}>
-                  {viewMode === 'all' && (
-                    <td>
-                      <span className="td-item-name">{purchase.itemName}</span>
-                    </td>
-                  )}
-                  <td className="td-bold">{purchase.partName}</td>
-                  <td className="td-spec">{purchase.specification}</td>
-                  <td>{purchase.quantity} {purchase.unit}</td>
-                  <td>{purchase.supplier}</td>
-                  <td>{purchase.orderDate || '-'}</td>
-                  <td>{purchase.expectedDelivery || '-'}</td>
-                  <td>{purchase.actualDelivery || '-'}</td>
-                  <td><PurchaseStatusBadge status={purchase.status} /></td>
-                  <td className="td-cost">
-                    {(purchase.unitPrice * purchase.quantity).toLocaleString()} {purchase.currency}
-                  </td>
-                  <td className="td-notes">{purchase.notes}</td>
-                  <td>
-                    <div className="action-btns">
-                      <button className="btn-icon" onClick={() => handleEdit(purchase)} title="수정">✎</button>
-                      <button className="btn-icon btn-danger" onClick={() => deletePurchase(project.id, purchase.parentItemId, purchase.id)} title="삭제">✕</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {displayPurchases.length === 0 && (
-                <tr><td colSpan={viewMode === 'all' ? 12 : 11} className="empty-row">등록된 발주가 없습니다.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <p className="edit-hint">카드를 클릭하여 직접 수정할 수 있습니다</p>
+
+        {/* Purchase Cards */}
+        <div className="purchase-cards">
+          {allPurchases.map(purchase => (
+            <div key={purchase.id} className={`purchase-card ${purchase.status === 'delivered' ? 'purchase-card-done' : ''}`}>
+              <div className="purchase-card-header">
+                <div className="purchase-order-num">
+                  <EditableCell
+                    value={purchase.orderNumber || ''}
+                    onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderNumber', v)}
+                    placeholder="발주번호"
+                  />
+                </div>
+                <PurchaseStatusBadge status={purchase.status} />
+                <button className="btn-icon btn-danger" onClick={() => deletePurchase(project.id, purchase.parentItemId, purchase.id)} title="삭제">✕</button>
+              </div>
+
+              <div className="purchase-card-body">
+                <div className="purchase-card-main">
+                  <h4>
+                    <EditableCell
+                      value={purchase.partName}
+                      onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'partName', v)}
+                    />
+                  </h4>
+                  <span className="purchase-card-spec">
+                    <EditableCell
+                      value={purchase.specification}
+                      onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'specification', v)}
+                      placeholder="사양"
+                    />
+                  </span>
+                </div>
+
+                <div className="purchase-card-grid">
+                  <div className="purchase-field">
+                    <label>품목</label>
+                    <span className="td-item-name">{purchase.itemName}</span>
+                  </div>
+                  <div className="purchase-field">
+                    <label>공급업체</label>
+                    <EditableCell value={purchase.supplier} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'supplier', v)} placeholder="-" />
+                  </div>
+                  <div className="purchase-field">
+                    <label>담당 팀</label>
+                    <EditableCell value={purchase.team || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'team', v)} placeholder="-" />
+                  </div>
+                  <div className="purchase-field">
+                    <label>수량</label>
+                    <span>
+                      <EditableCell value={String(purchase.quantity)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'quantity', Number(v))} />
+                      {' '}{purchase.unit}
+                    </span>
+                  </div>
+                  <div className="purchase-field">
+                    <label>단가</label>
+                    <EditableCell value={String(purchase.unitPrice)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'unitPrice', Number(v))} />
+                  </div>
+                  <div className="purchase-field">
+                    <label>통화</label>
+                    <EditableCell value={purchase.currency} type="select" options={currencyOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'currency', v)} />
+                  </div>
+                  <div className="purchase-field">
+                    <label>금액</label>
+                    <span className="td-cost">{(purchase.unitPrice * purchase.quantity).toLocaleString()} {purchase.currency}</span>
+                  </div>
+                  <div className="purchase-field">
+                    <label>상태</label>
+                    <EditableCell value={purchase.status} type="select" options={purchaseStatusOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'status', v)} />
+                  </div>
+                  <div className="purchase-field">
+                    <label>발주일</label>
+                    <EditableCell value={purchase.orderDate} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderDate', v)} />
+                  </div>
+                  <div className="purchase-field">
+                    <label>납기 예정</label>
+                    <EditableCell value={purchase.expectedDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'expectedDelivery', v)} />
+                  </div>
+                  <div className="purchase-field">
+                    <label>입고일</label>
+                    <EditableCell value={purchase.actualDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'actualDelivery', v)} />
+                  </div>
+                  <div className="purchase-field full-width">
+                    <label>비고</label>
+                    <EditableCell value={purchase.notes} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'notes', v)} placeholder="메모" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {allPurchases.length === 0 && (
+            <p className="empty-message">등록된 발주가 없습니다.</p>
+          )}
         </div>
       </div>
     </div>

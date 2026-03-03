@@ -1,5 +1,10 @@
 import type { Project } from '../types';
 
+export const PROJECT_COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
+  '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4',
+];
+
 export const sampleProjects: Project[] = [
   {
     id: 'proj-001',
@@ -9,12 +14,22 @@ export const sampleProjects: Project[] = [
     startDate: '2026-01-15',
     endDate: '2026-08-30',
     client: 'Saudi Aramco',
+    color: '#3b82f6',
+    hidden: false,
+    budgetKRW: 500000000,
+    budgetUSD: 200000,
+    exchangeRate: 1350,
     items: [
       {
         id: 'item-001',
         projectId: 'proj-001',
         name: 'Combustion Chamber',
         category: '연소실',
+        supplier: 'Harbison-Walker',
+        requiredDeliveryDate: '2026-04-15',
+        procurementStatus: 'manufacturing',
+        purchaseOrderDraft: '',
+        notes: '주요 자재 발주 진행 중',
         status: 'in_progress',
         schedules: [
           {
@@ -66,11 +81,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-001',
             itemId: 'item-001',
+            orderNumber: 'PO-2026-001',
             partName: 'Refractory Lining',
             specification: 'Castable 1600°C Grade',
             quantity: 5,
             unit: 'ton',
             supplier: 'Harbison-Walker',
+            team: '구매팀',
             orderDate: '2026-02-20',
             expectedDelivery: '2026-04-15',
             actualDelivery: '',
@@ -82,11 +99,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-002',
             itemId: 'item-001',
+            orderNumber: 'PO-2026-002',
             partName: 'SS316L Plate',
             specification: '12mm x 1500 x 6000',
             quantity: 20,
             unit: 'EA',
             supplier: 'POSCO',
+            team: '구매팀',
             orderDate: '2026-02-25',
             expectedDelivery: '2026-03-25',
             actualDelivery: '',
@@ -102,6 +121,11 @@ export const sampleProjects: Project[] = [
         projectId: 'proj-001',
         name: 'Stack',
         category: '스택',
+        supplier: '현대제철',
+        requiredDeliveryDate: '2026-05-01',
+        procurementStatus: 'rfq_writing',
+        purchaseOrderDraft: '',
+        notes: '기본 설계 진행 중',
         status: 'not_started',
         schedules: [
           {
@@ -131,11 +155,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-003',
             itemId: 'item-002',
+            orderNumber: '',
             partName: 'Carbon Steel Plate',
             specification: 'A516 Gr.70, 16mm',
             quantity: 15,
             unit: 'EA',
             supplier: '현대제철',
+            team: '구매팀',
             orderDate: '',
             expectedDelivery: '',
             actualDelivery: '',
@@ -151,6 +177,11 @@ export const sampleProjects: Project[] = [
         projectId: 'proj-001',
         name: 'Burner Assembly',
         category: '버너',
+        supplier: 'Zeeco Inc.',
+        requiredDeliveryDate: '2026-05-10',
+        procurementStatus: 'quoting',
+        purchaseOrderDraft: '',
+        notes: '최종 검토 중',
         status: 'in_progress',
         schedules: [
           {
@@ -169,11 +200,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-004',
             itemId: 'item-003',
+            orderNumber: 'PO-2026-004',
             partName: 'Gas Pilot',
             specification: 'Model ZP-100',
             quantity: 2,
             unit: 'SET',
             supplier: 'Zeeco Inc.',
+            team: '설계팀',
             orderDate: '2026-02-10',
             expectedDelivery: '2026-05-10',
             actualDelivery: '',
@@ -194,12 +227,22 @@ export const sampleProjects: Project[] = [
     startDate: '2026-03-01',
     endDate: '2026-12-31',
     client: 'KNPC',
+    color: '#6366f1',
+    hidden: false,
+    budgetKRW: 800000000,
+    budgetUSD: 500000,
+    exchangeRate: 1350,
     items: [
       {
         id: 'item-004',
         projectId: 'proj-002',
         name: 'Flare Tip',
         category: '플레어팁',
+        supplier: '',
+        requiredDeliveryDate: '',
+        procurementStatus: 'rfq_writing',
+        purchaseOrderDraft: '',
+        notes: '',
         status: 'not_started',
         schedules: [
           {
@@ -221,6 +264,11 @@ export const sampleProjects: Project[] = [
         projectId: 'proj-002',
         name: 'Knock-out Drum',
         category: 'K.O Drum',
+        supplier: '',
+        requiredDeliveryDate: '',
+        procurementStatus: 'rfq_writing',
+        purchaseOrderDraft: '',
+        notes: '',
         status: 'not_started',
         schedules: [
           {
@@ -247,12 +295,22 @@ export const sampleProjects: Project[] = [
     startDate: '2025-10-01',
     endDate: '2026-06-30',
     client: 'Shell',
+    color: '#10b981',
+    hidden: false,
+    budgetKRW: 300000000,
+    budgetUSD: 180000,
+    exchangeRate: 1350,
     items: [
       {
         id: 'item-006',
         projectId: 'proj-003',
         name: 'Compressor Package',
         category: '압축기',
+        supplier: 'Atlas Copco',
+        requiredDeliveryDate: '2026-03-15',
+        procurementStatus: 'manufacturing',
+        purchaseOrderDraft: '',
+        notes: '제작 진행 중',
         status: 'in_progress',
         schedules: [
           {
@@ -282,11 +340,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-005',
             itemId: 'item-006',
+            orderNumber: 'PO-2025-010',
             partName: 'Screw Compressor',
             specification: 'Atlas Copco ZR250',
             quantity: 1,
             unit: 'SET',
             supplier: 'Atlas Copco',
+            team: '기계팀',
             orderDate: '2025-11-15',
             expectedDelivery: '2026-03-15',
             actualDelivery: '2026-03-10',
@@ -298,11 +358,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-006',
             itemId: 'item-006',
+            orderNumber: 'PO-2025-011',
             partName: 'Control Valve',
             specification: 'Fisher DVC6200',
             quantity: 4,
             unit: 'EA',
             supplier: 'Emerson',
+            team: '제어팀',
             orderDate: '2025-12-01',
             expectedDelivery: '2026-04-01',
             actualDelivery: '',
@@ -318,6 +380,11 @@ export const sampleProjects: Project[] = [
         projectId: 'proj-003',
         name: 'Absorption Tower',
         category: '흡수탑',
+        supplier: 'Sulzer',
+        requiredDeliveryDate: '2026-01-15',
+        procurementStatus: 'delivered',
+        purchaseOrderDraft: '',
+        notes: '제작 완료 및 검사 통과',
         status: 'completed',
         schedules: [
           {
@@ -336,11 +403,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-007',
             itemId: 'item-007',
+            orderNumber: 'PO-2025-008',
             partName: 'Packing Material',
             specification: 'Sulzer Mellapak 250Y',
             quantity: 50,
             unit: 'm²',
             supplier: 'Sulzer',
+            team: '공정팀',
             orderDate: '2025-10-20',
             expectedDelivery: '2026-01-15',
             actualDelivery: '2026-01-12',
@@ -361,12 +430,22 @@ export const sampleProjects: Project[] = [
     startDate: '2026-02-01',
     endDate: '2026-10-31',
     client: 'ADNOC',
+    color: '#ef4444',
+    hidden: false,
+    budgetKRW: 400000000,
+    budgetUSD: 150000,
+    exchangeRate: 1350,
     items: [
       {
         id: 'item-008',
         projectId: 'proj-004',
         name: 'Incinerator Chamber',
         category: '소각로',
+        supplier: '',
+        requiredDeliveryDate: '',
+        procurementStatus: 'rfq_writing',
+        purchaseOrderDraft: '',
+        notes: '고객 사양 변경으로 지연',
         status: 'delayed',
         schedules: [
           {
@@ -393,12 +472,22 @@ export const sampleProjects: Project[] = [
     startDate: '2025-06-01',
     endDate: '2026-01-31',
     client: 'Petronas',
+    color: '#f59e0b',
+    hidden: false,
+    budgetKRW: 200000000,
+    budgetUSD: 100000,
+    exchangeRate: 1350,
     items: [
       {
         id: 'item-009',
         projectId: 'proj-005',
         name: 'Enclosed Flare Body',
         category: '플레어본체',
+        supplier: 'Morgan Thermal',
+        requiredDeliveryDate: '2025-09-15',
+        procurementStatus: 'delivered',
+        purchaseOrderDraft: '',
+        notes: '출하 완료',
         status: 'completed',
         schedules: [
           {
@@ -417,11 +506,13 @@ export const sampleProjects: Project[] = [
           {
             id: 'pur-008',
             itemId: 'item-009',
+            orderNumber: 'PO-2025-005',
             partName: 'Ceramic Fiber Module',
             specification: '1400°C Grade, 300mm',
             quantity: 120,
             unit: 'EA',
             supplier: 'Morgan Thermal',
+            team: '구매팀',
             orderDate: '2025-07-10',
             expectedDelivery: '2025-09-15',
             actualDelivery: '2025-09-20',
