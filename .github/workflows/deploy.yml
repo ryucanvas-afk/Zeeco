@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['main', 'claude/project-management-dashboard-wXf5h']
+    branches: ['master', 'main']
 
 permissions:
   contents: read
