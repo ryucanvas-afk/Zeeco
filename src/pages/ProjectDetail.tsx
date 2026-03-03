@@ -8,7 +8,8 @@ import PurchaseTab from '../components/PurchaseTab';
 import BudgetTab from '../components/BudgetTab';
 import InspectionTab from '../components/InspectionTab';
 import FactoryTab from '../components/FactoryTab';
-import type { ItemStatus, ProjectStatus, ProcurementStatus, ItemManagementStatus } from '../types';
+import type { ItemStatus, ProjectStatus, ProcurementStatus, ItemManagementStatus, DeliveryScheduleEntry } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 type TabType = 'overview' | 'schedule' | 'purchase' | 'budget' | 'inspection' | 'factory';
 
@@ -119,6 +120,14 @@ export default function ProjectDetail() {
           <p className="project-header-desc">
             <EditableCell value={project.description} onSave={v => updateProject(project.id, { description: v })} placeholder="설명을 입력하세요" />
           </p>
+          {/* Header Note - red, large */}
+          <div className="project-header-note">
+            <EditableCell
+              value={project.headerNote || ''}
+              onSave={v => updateProject(project.id, { headerNote: v })}
+              placeholder="중요 공지사항 입력 (예: SKID & BMS 납기 변경)"
+            />
+          </div>
           <div className="project-header-meta">
             <EditableCell value={project.status} type="select" options={projectStatusOptions} onSave={v => updateProject(project.id, { status: v as ProjectStatus })} />
             <span>고객사: <EditableCell value={project.client} onSave={v => updateProject(project.id, { client: v })} /></span>
@@ -134,6 +143,45 @@ export default function ProjectDetail() {
               />
               공장 관리
             </label>
+          </div>
+          {/* Delivery Schedules - split deliveries */}
+          <div className="delivery-schedules">
+            <div className="delivery-schedules-header">
+              <span className="delivery-schedules-label">분할 납기 일정</span>
+              <button className="btn btn-sm btn-secondary" onClick={() => {
+                const newEntry: DeliveryScheduleEntry = { id: uuidv4(), label: '', date: '' };
+                updateProject(project.id, { deliverySchedules: [...(project.deliverySchedules || []), newEntry] });
+              }}>+ 납기 추가</button>
+            </div>
+            {(project.deliverySchedules || []).length > 0 && (
+              <div className="delivery-schedules-list">
+                {(project.deliverySchedules || []).map(ds => (
+                  <div key={ds.id} className="delivery-schedule-item">
+                    <EditableCell
+                      value={ds.label}
+                      onSave={v => {
+                        const updated = (project.deliverySchedules || []).map(d => d.id === ds.id ? { ...d, label: v } : d);
+                        updateProject(project.id, { deliverySchedules: updated });
+                      }}
+                      placeholder="Unit #1"
+                    />
+                    <span className="delivery-schedule-sep">:</span>
+                    <EditableCell
+                      value={ds.date}
+                      type="date"
+                      onSave={v => {
+                        const updated = (project.deliverySchedules || []).map(d => d.id === ds.id ? { ...d, date: v } : d);
+                        updateProject(project.id, { deliverySchedules: updated });
+                      }}
+                    />
+                    <button className="btn-icon btn-danger" onClick={() => {
+                      const updated = (project.deliverySchedules || []).filter(d => d.id !== ds.id);
+                      updateProject(project.id, { deliverySchedules: updated });
+                    }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
