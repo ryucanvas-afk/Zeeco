@@ -5,12 +5,13 @@ import { ProjectStatusBadge } from '../components/StatusBadge';
 export default function Dashboard() {
   const { projects } = useProjects();
 
-  const totalItems = projects.reduce((sum, p) => sum + p.items.length, 0);
-  const completedItems = projects.reduce(
+  const visibleProjects = projects.filter(p => !p.hidden);
+  const totalItems = visibleProjects.reduce((sum, p) => sum + p.items.length, 0);
+  const completedItems = visibleProjects.reduce(
     (sum, p) => sum + p.items.filter(i => i.status === 'completed').length, 0
   );
-  const inProgressProjects = projects.filter(p => p.status === 'in_progress').length;
-  const allPurchases = projects.flatMap(p => p.items.flatMap(i => i.purchases));
+  const inProgressProjects = visibleProjects.filter(p => p.status === 'in_progress').length;
+  const allPurchases = visibleProjects.flatMap(p => p.items.flatMap(i => i.purchases));
   const pendingPurchases = allPurchases.filter(p => p.status === 'pending' || p.status === 'ordered').length;
 
   return (
@@ -23,7 +24,7 @@ export default function Dashboard() {
       {/* Summary */}
       <div className="summary-cards">
         <div className="summary-card">
-          <div className="summary-value">{projects.length}</div>
+          <div className="summary-value">{visibleProjects.length}</div>
           <div className="summary-label">전체 프로젝트</div>
         </div>
         <div className="summary-card card-ordered">
@@ -66,7 +67,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {projects.map(project => {
+              {visibleProjects.map(project => {
                 const items = project.items.length;
                 const done = project.items.filter(i => i.status === 'completed').length;
                 const progress = items > 0 ? Math.round((done / items) * 100) : 0;

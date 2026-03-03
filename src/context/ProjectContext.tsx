@@ -6,11 +6,21 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
+const SCHEMA_VERSION = 2; // bump this when data shape changes
+const VERSION_KEY = 'zeeco-schema-version';
+
 function loadProjects(): Project[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
+    const version = localStorage.getItem(VERSION_KEY);
+    if (version && Number(version) === SCHEMA_VERSION) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } else {
+      // Schema changed, reset data
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
     }
   } catch {
     // ignore parse errors
@@ -23,6 +33,7 @@ interface ProjectContextType {
   addProject: (project: Omit<Project, 'id' | 'items'>) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  toggleHideProject: (id: string) => void;
   addItem: (projectId: string, item: Omit<ProjectItem, 'id' | 'projectId' | 'schedules' | 'purchases'>) => void;
   updateItem: (projectId: string, itemId: string, updates: Partial<ProjectItem>) => void;
   deleteItem: (projectId: string, itemId: string) => void;
@@ -40,9 +51,9 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(loadProjects);
 
-  // Persist to localStorage on every change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
   }, [projects]);
 
   const resetData = () => {
@@ -60,6 +71,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const deleteProject = (id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id));
+  };
+
+  const toggleHideProject = (id: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, hidden: !p.hidden } : p));
   };
 
   const addItem = (projectId: string, item: Omit<ProjectItem, 'id' | 'projectId' | 'schedules' | 'purchases'>) => {
@@ -176,7 +191,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{
       projects,
-      addProject, updateProject, deleteProject,
+      addProject, updateProject, deleteProject, toggleHideProject,
       addItem, updateItem, deleteItem,
       addSchedule, updateSchedule, deleteSchedule,
       addPurchase, updatePurchase, deletePurchase,

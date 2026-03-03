@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import { ProjectStatusBadge } from '../components/StatusBadge';
+import { PROJECT_COLORS } from '../data/sampleData';
 import type { ProjectStatus } from '../types';
 
 export default function ProjectList() {
-  const { projects, addProject, deleteProject } = useProjects();
+  const { projects, addProject, deleteProject, toggleHideProject } = useProjects();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | 'all'>('all');
+  const [showHidden, setShowHidden] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -17,14 +19,21 @@ export default function ProjectList() {
     startDate: '',
     endDate: '',
     client: '',
+    color: PROJECT_COLORS[0],
+    hidden: false,
+    budgetKRW: 0,
+    budgetUSD: 0,
+    exchangeRate: 1350,
   });
 
-  const filtered = filterStatus === 'all' ? projects : projects.filter(p => p.status === filterStatus);
+  const visibleProjects = showHidden ? projects : projects.filter(p => !p.hidden);
+  const filtered = filterStatus === 'all' ? visibleProjects : visibleProjects.filter(p => p.status === filterStatus);
+  const hiddenCount = projects.filter(p => p.hidden).length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addProject(formData);
-    setFormData({ name: '', description: '', status: 'planning', startDate: '', endDate: '', client: '' });
+    setFormData({ name: '', description: '', status: 'planning', startDate: '', endDate: '', client: '', color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length], hidden: false, budgetKRW: 0, budgetUSD: 0, exchangeRate: 1350 });
     setShowForm(false);
   };
 
@@ -40,6 +49,11 @@ export default function ProjectList() {
             <button className={`toggle-btn ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>완료</button>
             <button className={`toggle-btn ${filterStatus === 'on_hold' ? 'active' : ''}`} onClick={() => setFilterStatus('on_hold')}>보류</button>
           </div>
+          {hiddenCount > 0 && (
+            <button className="btn btn-secondary" onClick={() => setShowHidden(!showHidden)}>
+              {showHidden ? '숨김 프로젝트 감추기' : `숨김 (${hiddenCount})`}
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ 새 프로젝트</button>
         </div>
       </div>
@@ -87,16 +101,30 @@ export default function ProjectList() {
           const pendingPurchases = purchases.filter(p => p.status !== 'delivered' && p.status !== 'cancelled').length;
 
           return (
-            <div key={project.id} className="project-card" onClick={() => navigate(`/project/${project.id}`)}>
+            <div
+              key={project.id}
+              className={`project-card ${project.hidden ? 'project-card-hidden' : ''}`}
+              style={{ borderTop: `3px solid ${project.color || '#3b82f6'}` }}
+              onClick={() => navigate(`/project/${project.id}`)}
+            >
               <div className="project-card-header">
                 <h3>{project.name}</h3>
-                <button
-                  className="btn-icon btn-danger"
-                  onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
-                  title="삭제"
-                >
-                  ✕
-                </button>
+                <div className="project-card-actions" onClick={e => e.stopPropagation()}>
+                  <button
+                    className="btn-icon"
+                    onClick={() => toggleHideProject(project.id)}
+                    title={project.hidden ? '표시' : '숨김'}
+                  >
+                    {project.hidden ? '◉' : '◎'}
+                  </button>
+                  <button
+                    className="btn-icon btn-danger"
+                    onClick={() => deleteProject(project.id)}
+                    title="삭제"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
               <p className="project-card-client">{project.client}</p>
               <p className="project-card-desc">{project.description}</p>
@@ -119,7 +147,7 @@ export default function ProjectList() {
                 </div>
               </div>
               <div className="progress-bar-bg" style={{ marginTop: '8px' }}>
-                <div className="progress-bar-fill" style={{ width: `${progress}%`, backgroundColor: progress === 100 ? '#10b981' : '#3b82f6' }} />
+                <div className="progress-bar-fill" style={{ width: `${progress}%`, backgroundColor: progress === 100 ? '#10b981' : project.color || '#3b82f6' }} />
               </div>
             </div>
           );
