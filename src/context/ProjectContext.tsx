@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const VERSION_KEY = 'zeeco-schema-version';
 
 // Migrate old data to new schema instead of resetting
@@ -65,7 +65,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
         vat: (pu.vat as number) || 0,
         currency: (pu.currency as string) || 'KRW',
         termsOfPayment: (pu.termsOfPayment as string) || '',
-        scopeOfSupply: (pu.scopeOfSupply as string) || '',
+        scopeOfSupply: Array.isArray(pu.scopeOfSupply) ? (pu.scopeOfSupply as string[]) : (pu.scopeOfSupply ? [pu.scopeOfSupply as string] : ['']),
         notes: (pu.notes as string) || '',
         sortOrder: (pu.sortOrder as number) || 0,
       })),

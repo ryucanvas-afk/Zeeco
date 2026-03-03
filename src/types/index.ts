@@ -119,7 +119,7 @@ export interface Purchase {
   vat: number;
   currency: string;
   termsOfPayment: string;
-  scopeOfSupply: string;
+  scopeOfSupply: string[];
   notes: string;
   sortOrder: number;
 }

@@ -52,8 +52,8 @@ export const sampleProjects: Project[] = [
           { id: 'sch-004', itemId: 'item-001', task: '검사 및 출하', startDate: '2026-07-01', endDate: '2026-08-15', progress: 0, status: 'not_started', assignee: '정수진', notes: '' },
         ],
         purchases: [
-          { id: 'pur-001', itemId: 'item-001', orderNumber: 'PO-2026-001', partName: 'Refractory Lining', specification: 'Castable 1600C Grade', quantity: 5, unit: 'ton', supplier: 'Harbison-Walker', team: '구매팀', orderDate: '2026-02-20', expectedDelivery: '2026-04-15', actualDelivery: '', status: 'po_completed', orderAmount: 16000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: 'Supply only', notes: '납기 확인 필요', sortOrder: 0 },
-          { id: 'pur-002', itemId: 'item-001', orderNumber: 'PO-2026-002', partName: 'SS316L Plate', specification: '12mm x 1500 x 6000', quantity: 20, unit: 'EA', supplier: 'POSCO', team: '구매팀', orderDate: '2026-02-25', expectedDelivery: '2026-03-25', actualDelivery: '', status: 'manufacturing', orderAmount: 17000000, vat: 1700000, currency: 'KRW', termsOfPayment: '선급금 30%, 잔금 납품 후', scopeOfSupply: 'Supply only', notes: '운송 중', sortOrder: 1 },
+          { id: 'pur-001', itemId: 'item-001', orderNumber: 'PO-2026-001', partName: 'Refractory Lining', specification: 'Castable 1600C Grade', quantity: 5, unit: 'ton', supplier: 'Harbison-Walker', team: '구매팀', orderDate: '2026-02-20', expectedDelivery: '2026-04-15', actualDelivery: '', status: 'po_completed', orderAmount: 16000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: ['Supply only'], notes: '납기 확인 필요', sortOrder: 0 },
+          { id: 'pur-002', itemId: 'item-001', orderNumber: 'PO-2026-002', partName: 'SS316L Plate', specification: '12mm x 1500 x 6000', quantity: 20, unit: 'EA', supplier: 'POSCO', team: '구매팀', orderDate: '2026-02-25', expectedDelivery: '2026-03-25', actualDelivery: '', status: 'manufacturing', orderAmount: 17000000, vat: 1700000, currency: 'KRW', termsOfPayment: '선급금 30%, 잔금 납품 후', scopeOfSupply: ['Supply only'], notes: '운송 중', sortOrder: 1 },
         ],
       },
       {
@@ -73,7 +73,7 @@ export const sampleProjects: Project[] = [
           { id: 'sch-006', itemId: 'item-002', task: '제작', startDate: '2026-05-01', endDate: '2026-07-15', progress: 0, status: 'not_started', assignee: '박민수', notes: '' },
         ],
         purchases: [
-          { id: 'pur-003', itemId: 'item-002', orderNumber: '', partName: 'Carbon Steel Plate', specification: 'A516 Gr.70, 16mm', quantity: 15, unit: 'EA', supplier: '현대제철', team: '구매팀', orderDate: '', expectedDelivery: '', actualDelivery: '', status: 'rfq_writing', orderAmount: 10800000, vat: 1080000, currency: 'KRW', termsOfPayment: '', scopeOfSupply: '', notes: '발주 대기', sortOrder: 0 },
+          { id: 'pur-003', itemId: 'item-002', orderNumber: '', partName: 'Carbon Steel Plate', specification: 'A516 Gr.70, 16mm', quantity: 15, unit: 'EA', supplier: '현대제철', team: '구매팀', orderDate: '', expectedDelivery: '', actualDelivery: '', status: 'rfq_writing', orderAmount: 10800000, vat: 1080000, currency: 'KRW', termsOfPayment: '', scopeOfSupply: [''], notes: '발주 대기', sortOrder: 0 },
         ],
       },
       {
@@ -92,7 +92,7 @@ export const sampleProjects: Project[] = [
           { id: 'sch-007', itemId: 'item-003', task: '버너 설계', startDate: '2026-01-20', endDate: '2026-03-10', progress: 90, status: 'in_progress', assignee: '최동현', notes: '최종 검토 중' },
         ],
         purchases: [
-          { id: 'pur-004', itemId: 'item-003', orderNumber: 'PO-2026-004', partName: 'Gas Pilot', specification: 'Model ZP-100', quantity: 2, unit: 'SET', supplier: 'Zeeco Inc.', team: '설계팀', orderDate: '2026-02-10', expectedDelivery: '2026-05-10', actualDelivery: '', status: 'po_completed', orderAmount: 30000, vat: 0, currency: 'USD', termsOfPayment: 'L/C at sight', scopeOfSupply: 'Supply + Installation supervision', notes: '12주 리드타임', sortOrder: 0 },
+          { id: 'pur-004', itemId: 'item-003', orderNumber: 'PO-2026-004', partName: 'Gas Pilot', specification: 'Model ZP-100', quantity: 2, unit: 'SET', supplier: 'Zeeco Inc.', team: '설계팀', orderDate: '2026-02-10', expectedDelivery: '2026-05-10', actualDelivery: '', status: 'po_completed', orderAmount: 30000, vat: 0, currency: 'USD', termsOfPayment: 'L/C at sight', scopeOfSupply: ['Supply + Installation supervision'], notes: '12주 리드타임', sortOrder: 0 },
         ],
       },
     ],
@@ -198,8 +198,8 @@ export const sampleProjects: Project[] = [
           { id: 'sch-011', itemId: 'item-006', task: 'FAT 검사', startDate: '2026-05-01', endDate: '2026-05-30', progress: 0, status: 'not_started', assignee: '정수진', notes: '' },
         ],
         purchases: [
-          { id: 'pur-005', itemId: 'item-006', orderNumber: 'PO-2025-010', partName: 'Screw Compressor', specification: 'Atlas Copco ZR250', quantity: 1, unit: 'SET', supplier: 'Atlas Copco', team: '기계팀', orderDate: '2025-11-15', expectedDelivery: '2026-03-15', actualDelivery: '2026-03-10', status: 'delivered', orderAmount: 125000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 60 days', scopeOfSupply: 'Supply + Commissioning', notes: '입고 완료', sortOrder: 0 },
-          { id: 'pur-006', itemId: 'item-006', orderNumber: 'PO-2025-011', partName: 'Control Valve', specification: 'Fisher DVC6200', quantity: 4, unit: 'EA', supplier: 'Emerson', team: '제어팀', orderDate: '2025-12-01', expectedDelivery: '2026-04-01', actualDelivery: '', status: 'manufacturing', orderAmount: 34000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: 'Supply only', notes: '운송 중 - 3월 말 도착 예정', sortOrder: 1 },
+          { id: 'pur-005', itemId: 'item-006', orderNumber: 'PO-2025-010', partName: 'Screw Compressor', specification: 'Atlas Copco ZR250', quantity: 1, unit: 'SET', supplier: 'Atlas Copco', team: '기계팀', orderDate: '2025-11-15', expectedDelivery: '2026-03-15', actualDelivery: '2026-03-10', status: 'delivered', orderAmount: 125000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 60 days', scopeOfSupply: ['Supply + Commissioning'], notes: '입고 완료', sortOrder: 0 },
+          { id: 'pur-006', itemId: 'item-006', orderNumber: 'PO-2025-011', partName: 'Control Valve', specification: 'Fisher DVC6200', quantity: 4, unit: 'EA', supplier: 'Emerson', team: '제어팀', orderDate: '2025-12-01', expectedDelivery: '2026-04-01', actualDelivery: '', status: 'manufacturing', orderAmount: 34000, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: ['Supply only'], notes: '운송 중 - 3월 말 도착 예정', sortOrder: 1 },
         ],
       },
       {
@@ -218,7 +218,7 @@ export const sampleProjects: Project[] = [
           { id: 'sch-012', itemId: 'item-007', task: '흡수탑 제작 완료', startDate: '2025-11-01', endDate: '2026-02-28', progress: 100, status: 'completed', assignee: '최동현', notes: '제작 완료 및 검사 통과' },
         ],
         purchases: [
-          { id: 'pur-007', itemId: 'item-007', orderNumber: 'PO-2025-008', partName: 'Packing Material', specification: 'Sulzer Mellapak 250Y', quantity: 50, unit: 'm2', supplier: 'Sulzer', team: '공정팀', orderDate: '2025-10-20', expectedDelivery: '2026-01-15', actualDelivery: '2026-01-12', status: 'delivered', orderAmount: 22500, vat: 0, currency: 'USD', termsOfPayment: 'L/C 90 days', scopeOfSupply: 'Supply only', notes: '입고 완료', sortOrder: 0 },
+          { id: 'pur-007', itemId: 'item-007', orderNumber: 'PO-2025-008', partName: 'Packing Material', specification: 'Sulzer Mellapak 250Y', quantity: 50, unit: 'm2', supplier: 'Sulzer', team: '공정팀', orderDate: '2025-10-20', expectedDelivery: '2026-01-15', actualDelivery: '2026-01-12', status: 'delivered', orderAmount: 22500, vat: 0, currency: 'USD', termsOfPayment: 'L/C 90 days', scopeOfSupply: ['Supply only'], notes: '입고 완료', sortOrder: 0 },
         ],
       },
     ],
@@ -306,7 +306,7 @@ export const sampleProjects: Project[] = [
           { id: 'sch-014', itemId: 'item-009', task: '제작 및 출하', startDate: '2025-08-01', endDate: '2026-01-15', progress: 100, status: 'completed', assignee: '박민수', notes: '출하 완료' },
         ],
         purchases: [
-          { id: 'pur-008', itemId: 'item-009', orderNumber: 'PO-2025-005', partName: 'Ceramic Fiber Module', specification: '1400C Grade, 300mm', quantity: 120, unit: 'EA', supplier: 'Morgan Thermal', team: '구매팀', orderDate: '2025-07-10', expectedDelivery: '2025-09-15', actualDelivery: '2025-09-20', status: 'delivered', orderAmount: 33600, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: 'Supply only', notes: '입고 완료 (5일 지연)', sortOrder: 0 },
+          { id: 'pur-008', itemId: 'item-009', orderNumber: 'PO-2025-005', partName: 'Ceramic Fiber Module', specification: '1400C Grade, 300mm', quantity: 120, unit: 'EA', supplier: 'Morgan Thermal', team: '구매팀', orderDate: '2025-07-10', expectedDelivery: '2025-09-15', actualDelivery: '2025-09-20', status: 'delivered', orderAmount: 33600, vat: 0, currency: 'USD', termsOfPayment: 'T/T 30 days', scopeOfSupply: ['Supply only'], notes: '입고 완료 (5일 지연)', sortOrder: 0 },
         ],
       },
     ],
