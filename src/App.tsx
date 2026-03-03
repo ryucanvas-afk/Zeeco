@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -8,7 +8,7 @@ import ProjectDetail from './pages/ProjectDetail';
 function App() {
   return (
     <ProjectProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
@@ -16,7 +16,7 @@ function App() {
             <Route path="/project/:id" element={<ProjectDetail />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ProjectProvider>
   );
 }
