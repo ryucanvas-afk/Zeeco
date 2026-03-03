@@ -9,21 +9,91 @@ const STORAGE_KEY = 'zeeco-projects';
 const SCHEMA_VERSION = 3;
 const VERSION_KEY = 'zeeco-schema-version';
 
+// Migrate old data to new schema instead of resetting
+function migrateProjects(projects: Record<string, unknown>[]): Project[] {
+  return projects.map((p: Record<string, unknown>) => ({
+    id: (p.id as string) || uuidv4(),
+    name: (p.name as string) || '',
+    projectNo: (p.projectNo as string) || '',
+    description: (p.description as string) || '',
+    status: (p.status as Project['status']) || 'planning',
+    contractDate: (p.contractDate as string) || (p as Record<string, unknown>).startDate as string || '',
+    komDate: (p.komDate as string) || '',
+    deliveryDate: (p.deliveryDate as string) || (p as Record<string, unknown>).endDate as string || '',
+    client: (p.client as string) || '',
+    color: (p.color as string) || '#3b82f6',
+    hidden: (p.hidden as boolean) || false,
+    budgetKRW: (p.budgetKRW as number) || 0,
+    budgetUSD: (p.budgetUSD as number) || 0,
+    exchangeRate: (p.exchangeRate as number) || 1350,
+    targetGM: (p.targetGM as number) || 0,
+    currentGM: (p.currentGM as number) || 0,
+    engineeringHours: (p.engineeringHours as Project['engineeringHours']) || { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+    directCost: (p.directCost as number) || 0,
+    contingency: (p.contingency as number) || 0,
+    needsFactoryManagement: (p.needsFactoryManagement as boolean) || false,
+    inspections: (p.inspections as Project['inspections']) || [],
+    factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
+    items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>) => ({
+      id: (i.id as string) || uuidv4(),
+      projectId: (i.projectId as string) || (p.id as string) || '',
+      name: (i.name as string) || '',
+      supplier: (i.supplier as string) || '',
+      requiredDeliveryDate: (i.requiredDeliveryDate as string) || '',
+      requiredDeliveryTBD: (i.requiredDeliveryTBD as boolean) || false,
+      procurementStatus: (i.procurementStatus as ProjectItem['procurementStatus']) || 'rfq_writing',
+      managementStatus: (i.managementStatus as ProjectItem['managementStatus']) || 'quoting',
+      notes: (i.notes as string) || '',
+      status: (i.status as ProjectItem['status']) || 'not_started',
+      subItems: (i.subItems as ProjectItem['subItems']) || [],
+      schedules: (i.schedules as ProjectItem['schedules']) || [],
+      purchases: ((i.purchases as Record<string, unknown>[]) || []).map((pu: Record<string, unknown>) => ({
+        id: (pu.id as string) || uuidv4(),
+        itemId: (pu.itemId as string) || (i.id as string) || '',
+        orderNumber: (pu.orderNumber as string) || '',
+        partName: (pu.partName as string) || '',
+        specification: (pu.specification as string) || '',
+        quantity: (pu.quantity as number) || 0,
+        unit: (pu.unit as string) || 'EA',
+        supplier: (pu.supplier as string) || '',
+        team: (pu.team as string) || '',
+        orderDate: (pu.orderDate as string) || '',
+        expectedDelivery: (pu.expectedDelivery as string) || '',
+        actualDelivery: (pu.actualDelivery as string) || '',
+        status: (pu.status as Purchase['status']) || 'rfq_writing',
+        orderAmount: (pu.orderAmount as number) || ((pu.unitPrice as number) || 0) * ((pu.quantity as number) || 0),
+        vat: (pu.vat as number) || 0,
+        currency: (pu.currency as string) || 'KRW',
+        termsOfPayment: (pu.termsOfPayment as string) || '',
+        scopeOfSupply: (pu.scopeOfSupply as string) || '',
+        notes: (pu.notes as string) || '',
+        sortOrder: (pu.sortOrder as number) || 0,
+      })),
+    })),
+  }));
+}
+
 function loadProjects(): Project[] {
   try {
-    const version = localStorage.getItem(VERSION_KEY);
-    if (version && Number(version) === SCHEMA_VERSION) {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const version = localStorage.getItem(VERSION_KEY);
+        if (version && Number(version) === SCHEMA_VERSION) {
+          return parsed;
+        }
+        // Version mismatch: migrate existing data instead of resetting
+        const migrated = migrateProjects(parsed);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
+        return migrated;
       }
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
     }
   } catch {
     // ignore parse errors
   }
+  localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
   return sampleProjects;
 }
 
