@@ -66,9 +66,9 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     setEditingId(null);
   };
 
-  const openAddForm = () => {
+  const openAddForm = (dateStr?: string) => {
     setFormData({
-      date: selectedDate || '',
+      date: dateStr || selectedDate || '',
       items: [''],
       categories: [''],
       location: '',
@@ -78,6 +78,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     });
     setEditingId(null);
     setShowForm(true);
+    if (dateStr) setSelectedDate(dateStr);
   };
 
   const openEditForm = (ins: InspectionEntry) => {
@@ -140,62 +141,83 @@ export default function InspectionTab({ project }: InspectionTabProps) {
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
+  // Build rows of 7
+  const calendarRows: (number | null)[][] = [];
+  for (let i = 0; i < calendarDays.length; i += 7) {
+    calendarRows.push(calendarDays.slice(i, i + 7));
+  }
+  // Pad last row
+  const lastRow = calendarRows[calendarRows.length - 1];
+  while (lastRow.length < 7) lastRow.push(null);
+
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   return (
     <div className="inspection-tab">
-      <div className="section-card">
-        <div className="section-header">
-          <h3 className="section-title">검사 일정 관리</h3>
+      {/* Calendar Navigation */}
+      <div className="insp-calendar-nav">
+        <button className="btn btn-secondary" onClick={prevMonth}>&lt;</button>
+        <span className="insp-calendar-title">{year}년 {MONTH_NAMES[month]}</span>
+        <button className="btn btn-secondary" onClick={nextMonth}>&gt;</button>
+      </div>
+
+      {/* Large Calendar Grid */}
+      <div className="insp-calendar">
+        <div className="insp-calendar-header">
+          {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+            <div key={d} className={`insp-calendar-header-cell ${d === '일' ? 'sun' : ''} ${d === '토' ? 'sat' : ''}`}>{d}</div>
+          ))}
         </div>
+        <div className="insp-calendar-body">
+          {calendarRows.map((row, rowIdx) => (
+            <div key={rowIdx} className="insp-calendar-row">
+              {row.map((day, colIdx) => {
+                if (day === null) return <div key={`empty-${rowIdx}-${colIdx}`} className="insp-calendar-cell insp-calendar-cell-empty" />;
+                const dayInspections = getInspectionsForDay(day);
+                const dateStr = getDateStr(day);
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const isSun = colIdx === 0;
+                const isSat = colIdx === 6;
 
-        {/* Calendar Navigation */}
-        <div className="calendar-nav">
-          <button className="btn btn-secondary" onClick={prevMonth}>&lt;</button>
-          <span className="calendar-title">{year}년 {MONTH_NAMES[month]}</span>
-          <button className="btn btn-secondary" onClick={nextMonth}>&gt;</button>
-        </div>
-
-        {/* Calendar Grid */}
-        <div className="calendar-grid">
-          <div className="calendar-header-row">
-            {['일', '월', '화', '수', '목', '금', '토'].map(d => (
-              <div key={d} className="calendar-header-cell">{d}</div>
-            ))}
-          </div>
-          <div className="calendar-body">
-            {calendarDays.map((day, idx) => {
-              if (day === null) return <div key={`empty-${idx}`} className="calendar-cell calendar-cell-empty" />;
-              const dayInspections = getInspectionsForDay(day);
-              const dateStr = getDateStr(day);
-              const isToday = dateStr === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-              const isSelected = dateStr === selectedDate;
-
-              return (
-                <div
-                  key={day}
-                  className={`calendar-cell ${isToday ? 'calendar-cell-today' : ''} ${isSelected ? 'calendar-cell-selected' : ''} ${dayInspections.length > 0 ? 'calendar-cell-has-data' : ''}`}
-                  onClick={() => handleDayClick(day)}
-                >
-                  <span className="calendar-day-num">{day}</span>
-                  {dayInspections.length > 0 && (
-                    <div className="calendar-cell-dots">
-                      {dayInspections.slice(0, 3).map((ins, i) => (
-                        <span key={i} className="calendar-dot" title={ins.items.join(', ')} />
+                return (
+                  <div
+                    key={day}
+                    className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''}`}
+                    onClick={() => handleDayClick(day)}
+                  >
+                    <div className="insp-cell-header">
+                      <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
+                      {dayInspections.length === 0 && (
+                        <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
+                      )}
+                    </div>
+                    <div className="insp-cell-content">
+                      {dayInspections.map(ins => (
+                        <div key={ins.id} className="insp-cell-entry" onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}>
+                          <div className="insp-cell-items">
+                            {ins.items.map((item, i) => (
+                              <span key={i} className="insp-cell-tag">{item}</span>
+                            ))}
+                          </div>
+                          {ins.location && <span className="insp-cell-location">{ins.location}</span>}
+                        </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Selected Day Detail */}
       {selectedDate && (
-        <div className="section-card">
+        <div className="section-card" style={{ marginTop: 16 }}>
           <div className="section-header">
             <h3 className="section-title">{selectedDate} 검사 일정</h3>
-            <button className="btn btn-primary" onClick={openAddForm}>+ 검사 추가</button>
+            <button className="btn btn-primary" onClick={() => openAddForm()}>+ 검사 추가</button>
           </div>
 
           {showForm && (

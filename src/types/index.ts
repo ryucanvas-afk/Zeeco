@@ -31,15 +31,23 @@ export type ItemManagementStatus =
   | 'delivered'
   | 'partial_delivered';
 
+export interface DeliveryScheduleEntry {
+  id: string;
+  label: string;
+  date: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   projectNo: string;
   description: string;
+  headerNote: string;
   status: ProjectStatus;
   contractDate: string;
   komDate: string;
   deliveryDate: string;
+  deliverySchedules: DeliveryScheduleEntry[];
   client: string;
   color: string;
   hidden: boolean;
@@ -48,20 +56,13 @@ export interface Project {
   exchangeRate: number;
   targetGM: number;
   currentGM: number;
-  engineeringHours: EngineeringHours;
+  engineeringCost: number;
   directCost: number;
   contingency: number;
   needsFactoryManagement: boolean;
   items: ProjectItem[];
   inspections: InspectionEntry[];
   factoryPurchases: FactoryPurchase[];
-}
-
-export interface EngineeringHours {
-  projecting: number;
-  drafting: number;
-  control: number;
-  inspection: number;
 }
 
 export interface ProjectItem {
