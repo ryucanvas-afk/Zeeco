@@ -20,10 +20,12 @@ export default function ProjectList() {
     name: '',
     projectNo: '',
     description: '',
+    headerNote: '',
     status: 'planning' as ProjectStatus,
     contractDate: '',
     komDate: '',
     deliveryDate: '',
+    deliverySchedules: [] as { id: string; label: string; date: string }[],
     client: '',
     color: PROJECT_COLORS[0],
     hidden: false,
@@ -32,7 +34,7 @@ export default function ProjectList() {
     exchangeRate: 1350,
     targetGM: 0,
     currentGM: 0,
-    engineeringHours: { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+    engineeringCost: 0,
     directCost: 0,
     contingency: 0,
     needsFactoryManagement: false,
@@ -46,12 +48,12 @@ export default function ProjectList() {
     e.preventDefault();
     addProject(formData);
     setFormData({
-      name: '', projectNo: '', description: '', status: 'planning',
-      contractDate: '', komDate: '', deliveryDate: '',
+      name: '', projectNo: '', description: '', headerNote: '', status: 'planning',
+      contractDate: '', komDate: '', deliveryDate: '', deliverySchedules: [],
       client: '', color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
       hidden: false, budgetKRW: 0, budgetUSD: 0, exchangeRate: 1350,
       targetGM: 0, currentGM: 0,
-      engineeringHours: { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+      engineeringCost: 0,
       directCost: 0, contingency: 0, needsFactoryManagement: false,
     });
     setShowForm(false);

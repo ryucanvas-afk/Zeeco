@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const VERSION_KEY = 'zeeco-schema-version';
 
 // Migrate old data to new schema instead of resetting
@@ -16,10 +16,12 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     name: (p.name as string) || '',
     projectNo: (p.projectNo as string) || '',
     description: (p.description as string) || '',
+    headerNote: (p.headerNote as string) || '',
     status: (p.status as Project['status']) || 'planning',
     contractDate: (p.contractDate as string) || (p as Record<string, unknown>).startDate as string || '',
     komDate: (p.komDate as string) || '',
     deliveryDate: (p.deliveryDate as string) || (p as Record<string, unknown>).endDate as string || '',
+    deliverySchedules: (p.deliverySchedules as Project['deliverySchedules']) || [],
     client: (p.client as string) || '',
     color: (p.color as string) || '#3b82f6',
     hidden: (p.hidden as boolean) || false,
@@ -28,7 +30,11 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     exchangeRate: (p.exchangeRate as number) || 1350,
     targetGM: (p.targetGM as number) || 0,
     currentGM: (p.currentGM as number) || 0,
-    engineeringHours: (p.engineeringHours as Project['engineeringHours']) || { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+    engineeringCost: (p.engineeringCost as number) || (() => {
+      const eh = p.engineeringHours as Record<string, number> | undefined;
+      if (eh) return ((eh.projecting || 0) + (eh.drafting || 0) + (eh.control || 0) + (eh.inspection || 0)) * 50000;
+      return 0;
+    })(),
     directCost: (p.directCost as number) || 0,
     contingency: (p.contingency as number) || 0,
     needsFactoryManagement: (p.needsFactoryManagement as boolean) || false,
@@ -65,7 +71,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
         vat: (pu.vat as number) || 0,
         currency: (pu.currency as string) || 'KRW',
         termsOfPayment: (pu.termsOfPayment as string) || '',
-        scopeOfSupply: (pu.scopeOfSupply as string) || '',
+        scopeOfSupply: Array.isArray(pu.scopeOfSupply) ? (pu.scopeOfSupply as string[]) : (pu.scopeOfSupply ? [pu.scopeOfSupply as string] : ['']),
         notes: (pu.notes as string) || '',
         sortOrder: (pu.sortOrder as number) || 0,
       })),

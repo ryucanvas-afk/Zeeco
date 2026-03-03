@@ -18,7 +18,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const budgetUSD = project.budgetUSD || 0;
   const targetGM = project.targetGM || 0;
   const currentGM = project.currentGM || 0;
-  const engHours = project.engineeringHours || { projecting: 0, drafting: 0, control: 0, inspection: 0 };
+  const engineeringCost = project.engineeringCost || 0;
   const directCost = project.directCost || 0;
   const contingency = project.contingency || 0;
 
@@ -42,8 +42,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const totalBudgetKRW = budgetKRW + budgetUSD * exchangeRate;
   // Total spent in KRW (purchases + engineering + direct cost + contingency)
   const purchaseSpentKRW = spentKRW + spentUSD * exchangeRate + spentEUR * exchangeRate * 1.1;
-  const totalEngCost = (engHours.projecting + engHours.drafting + engHours.control + engHours.inspection) * 50000; // 시간당 5만원 가정
-  const totalSpentKRW = purchaseSpentKRW + totalEngCost + directCost + contingency;
+  const totalSpentKRW = purchaseSpentKRW + engineeringCost + directCost + contingency;
   const remainingKRW = totalBudgetKRW - totalSpentKRW;
   const usagePercent = totalBudgetKRW > 0 ? Math.round((totalSpentKRW / totalBudgetKRW) * 100) : 0;
 
@@ -159,42 +158,15 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         </div>
       </div>
 
-      {/* Engineering Hours */}
-      <div className="section-card">
-        <h3 className="section-title">Engineering Hours</h3>
-        <div className="eng-hours-grid">
-          <div className="eng-hour-item">
-            <label>Projecting</label>
-            <EditableCell value={String(engHours.projecting)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, projecting: Number(v) } })} />
-            <span className="eng-unit">hrs</span>
-          </div>
-          <div className="eng-hour-item">
-            <label>Drafting</label>
-            <EditableCell value={String(engHours.drafting)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, drafting: Number(v) } })} />
-            <span className="eng-unit">hrs</span>
-          </div>
-          <div className="eng-hour-item">
-            <label>Control</label>
-            <EditableCell value={String(engHours.control)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, control: Number(v) } })} />
-            <span className="eng-unit">hrs</span>
-          </div>
-          <div className="eng-hour-item">
-            <label>Inspection</label>
-            <EditableCell value={String(engHours.inspection)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, inspection: Number(v) } })} />
-            <span className="eng-unit">hrs</span>
-          </div>
-          <div className="eng-hour-item eng-total">
-            <label>합계</label>
-            <span>{engHours.projecting + engHours.drafting + engHours.control + engHours.inspection} hrs</span>
-            <span className="eng-cost">({formatNumber(totalEngCost)} 원)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Direct Cost & Contingency */}
+      {/* Other Costs (Engineering + Direct + Contingency) */}
       <div className="section-card">
         <h3 className="section-title">기타 비용</h3>
         <div className="other-cost-grid">
+          <div className="other-cost-item">
+            <label>Engineering Hours</label>
+            <EditableCell value={String(engineeringCost)} type="number" onSave={v => updateProject(project.id, { engineeringCost: Number(v) })} />
+            <span className="eng-unit">원</span>
+          </div>
           <div className="other-cost-item">
             <label>Direct Cost</label>
             <EditableCell value={String(directCost)} type="number" onSave={v => updateProject(project.id, { directCost: Number(v) })} />
@@ -228,8 +200,8 @@ export default function BudgetTab({ project }: BudgetTabProps) {
               </tr>
               <tr>
                 <td className="td-bold">Engineering Hours</td>
-                <td className="td-cost">{formatNumber(totalEngCost)} 원</td>
-                <td>{totalSpentKRW > 0 ? Math.round((totalEngCost / totalSpentKRW) * 100) : 0}%</td>
+                <td className="td-cost">{formatNumber(engineeringCost)} 원</td>
+                <td>{totalSpentKRW > 0 ? Math.round((engineeringCost / totalSpentKRW) * 100) : 0}%</td>
               </tr>
               <tr>
                 <td className="td-bold">Direct Cost</td>

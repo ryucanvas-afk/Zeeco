@@ -24,7 +24,7 @@ const emptyPurchase: Omit<Purchase, 'id' | 'itemId'> = {
   vat: 0,
   currency: 'KRW',
   termsOfPayment: '',
-  scopeOfSupply: '',
+  scopeOfSupply: [''],
   notes: '',
   sortOrder: 0,
 };
@@ -236,13 +236,36 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                   <option value="EUR">EUR</option>
                 </select>
               </div>
-              <div className="form-group">
+              <div className="form-group full-width">
                 <label>Terms of Payment</label>
                 <input type="text" value={formData.termsOfPayment} onChange={e => setFormData({ ...formData, termsOfPayment: e.target.value })} placeholder="T/T 30 days" />
               </div>
               <div className="form-group full-width">
                 <label>Scope of Supply</label>
-                <input type="text" value={formData.scopeOfSupply} onChange={e => setFormData({ ...formData, scopeOfSupply: e.target.value })} placeholder="Supply only" />
+                <div className="scope-list">
+                  {formData.scopeOfSupply.map((item, idx) => (
+                    <div key={idx} className="scope-list-item">
+                      <span className="scope-number">{idx + 1}.</span>
+                      <input
+                        type="text"
+                        value={item}
+                        onChange={e => {
+                          const updated = [...formData.scopeOfSupply];
+                          updated[idx] = e.target.value;
+                          setFormData({ ...formData, scopeOfSupply: updated });
+                        }}
+                        placeholder={`항목 ${idx + 1}`}
+                      />
+                      {formData.scopeOfSupply.length > 1 && (
+                        <button type="button" className="btn-icon btn-danger" onClick={() => {
+                          const updated = formData.scopeOfSupply.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, scopeOfSupply: updated });
+                        }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => setFormData({ ...formData, scopeOfSupply: [...formData.scopeOfSupply, ''] })}>+ 항목 추가</button>
+                </div>
               </div>
             </div>
             <div className="form-actions">
@@ -377,13 +400,40 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                     <label>입고일</label>
                     <EditableCell value={purchase.actualDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'actualDelivery', v)} />
                   </div>
-                  <div className="purchase-field">
+                  <div className="purchase-field full-width">
                     <label>Terms of Payment</label>
                     <EditableCell value={purchase.termsOfPayment || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'termsOfPayment', v)} placeholder="-" />
                   </div>
                   <div className="purchase-field full-width">
                     <label>Scope of Supply</label>
-                    <EditableCell value={purchase.scopeOfSupply || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'scopeOfSupply', v)} placeholder="-" />
+                    <div className="scope-list">
+                      {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).map((item, idx) => (
+                        <div key={idx} className="scope-list-item">
+                          <span className="scope-number">{idx + 1}.</span>
+                          <EditableCell
+                            value={item}
+                            onSave={v => {
+                              const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                              current[idx] = v;
+                              updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
+                            }}
+                            placeholder={`항목 ${idx + 1}`}
+                          />
+                          {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).length > 1 && (
+                            <button className="btn-icon btn-danger" onClick={() => {
+                              const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                              current.splice(idx, 1);
+                              updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
+                            }}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                      <button className="btn btn-sm btn-secondary" onClick={() => {
+                        const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                        current.push('');
+                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
+                      }}>+ 항목 추가</button>
+                    </div>
                   </div>
                   <div className="purchase-field full-width">
                     <label>비고</label>
