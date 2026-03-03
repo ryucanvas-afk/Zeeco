@@ -6,34 +6,88 @@ interface BudgetTabProps {
   project: Project;
 }
 
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
 export default function BudgetTab({ project }: BudgetTabProps) {
   const { updateProject } = useProjects();
 
   const exchangeRate = project.exchangeRate || 1350;
   const budgetKRW = project.budgetKRW || 0;
   const budgetUSD = project.budgetUSD || 0;
+  const targetGM = project.targetGM || 0;
+  const currentGM = project.currentGM || 0;
+  const engHours = project.engineeringHours || { projecting: 0, drafting: 0, control: 0, inspection: 0 };
+  const directCost = project.directCost || 0;
+  const contingency = project.contingency || 0;
 
   // Calculate spent from purchases
   const allPurchases = project.items.flatMap(i => i.purchases);
   const spentKRW = allPurchases
-    .filter(p => p.currency === 'KRW' && p.status !== 'cancelled')
-    .reduce((sum, p) => sum + p.unitPrice * p.quantity, 0);
+    .filter(p => p.currency === 'KRW')
+    .reduce((sum, p) => sum + (p.orderAmount || 0), 0);
   const spentUSD = allPurchases
-    .filter(p => p.currency === 'USD' && p.status !== 'cancelled')
-    .reduce((sum, p) => sum + p.unitPrice * p.quantity, 0);
+    .filter(p => p.currency === 'USD')
+    .reduce((sum, p) => sum + (p.orderAmount || 0), 0);
   const spentEUR = allPurchases
-    .filter(p => p.currency === 'EUR' && p.status !== 'cancelled')
-    .reduce((sum, p) => sum + p.unitPrice * p.quantity, 0);
+    .filter(p => p.currency === 'EUR')
+    .reduce((sum, p) => sum + (p.orderAmount || 0), 0);
+  const totalVAT = allPurchases.reduce((sum, p) => {
+    const vatKRW = p.currency === 'KRW' ? (p.vat || 0) : (p.vat || 0) * exchangeRate;
+    return sum + vatKRW;
+  }, 0);
 
   // Total budget in KRW
   const totalBudgetKRW = budgetKRW + budgetUSD * exchangeRate;
-  // Total spent in KRW
-  const totalSpentKRW = spentKRW + spentUSD * exchangeRate + spentEUR * exchangeRate * 1.1; // rough EUR estimate
+  // Total spent in KRW (purchases + engineering + direct cost + contingency)
+  const purchaseSpentKRW = spentKRW + spentUSD * exchangeRate + spentEUR * exchangeRate * 1.1;
+  const totalEngCost = (engHours.projecting + engHours.drafting + engHours.control + engHours.inspection) * 50000; // 시간당 5만원 가정
+  const totalSpentKRW = purchaseSpentKRW + totalEngCost + directCost + contingency;
   const remainingKRW = totalBudgetKRW - totalSpentKRW;
   const usagePercent = totalBudgetKRW > 0 ? Math.round((totalSpentKRW / totalBudgetKRW) * 100) : 0;
 
+  // GM calculations
+  const gmAmount = totalBudgetKRW > 0 ? totalBudgetKRW * (currentGM / 100) : 0;
+  const targetGMAmount = totalBudgetKRW > 0 ? totalBudgetKRW * (targetGM / 100) : 0;
+  const remainingForTargetGM = targetGMAmount - gmAmount;
+
   return (
     <div className="budget-tab">
+      {/* GM Section */}
+      <div className="summary-cards">
+        <div className="summary-card card-ordered">
+          <div className="summary-label">목표 GM (%)</div>
+          <div className="summary-value summary-value-sm">
+            <EditableCell
+              value={String(targetGM)}
+              type="number"
+              onSave={v => updateProject(project.id, { targetGM: Number(v) })}
+            />
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>%</span>
+          </div>
+        </div>
+        <div className="summary-card card-shipped">
+          <div className="summary-label">현재 GM (%)</div>
+          <div className="summary-value summary-value-sm">
+            <EditableCell
+              value={String(currentGM)}
+              type="number"
+              onSave={v => updateProject(project.id, { currentGM: Number(v) })}
+            />
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>%</span>
+          </div>
+        </div>
+        <div className="summary-card card-pending">
+          <div className="summary-label">목표 GM 금액</div>
+          <div className="summary-value summary-value-sm">{formatNumber(Math.round(targetGMAmount))} 원</div>
+        </div>
+        <div className={`summary-card ${remainingForTargetGM >= 0 ? 'card-delivered' : 'card-cost'}`}>
+          <div className="summary-label">목표 대비 남은 예상</div>
+          <div className="summary-value summary-value-sm">{formatNumber(Math.round(remainingForTargetGM))} 원</div>
+        </div>
+      </div>
+
       {/* Exchange Rate */}
       <div className="section-card">
         <h3 className="section-title">환율 설정</h3>
@@ -74,15 +128,15 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         </div>
         <div className="summary-card card-ordered">
           <div className="summary-label">총 예산 (KRW 환산)</div>
-          <div className="summary-value summary-value-sm">{totalBudgetKRW.toLocaleString()} 원</div>
+          <div className="summary-value summary-value-sm">{formatNumber(totalBudgetKRW)} 원</div>
         </div>
         <div className="summary-card card-shipped">
           <div className="summary-label">총 집행액 (KRW 환산)</div>
-          <div className="summary-value summary-value-sm">{totalSpentKRW.toLocaleString()} 원</div>
+          <div className="summary-value summary-value-sm">{formatNumber(Math.round(totalSpentKRW))} 원</div>
         </div>
         <div className={`summary-card ${remainingKRW >= 0 ? 'card-delivered' : 'card-cost'}`}>
           <div className="summary-label">잔여 예산</div>
-          <div className="summary-value summary-value-sm">{remainingKRW.toLocaleString()} 원</div>
+          <div className="summary-value summary-value-sm">{formatNumber(Math.round(remainingKRW))} 원</div>
         </div>
       </div>
 
@@ -105,6 +159,103 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         </div>
       </div>
 
+      {/* Engineering Hours */}
+      <div className="section-card">
+        <h3 className="section-title">Engineering Hours</h3>
+        <div className="eng-hours-grid">
+          <div className="eng-hour-item">
+            <label>Projecting</label>
+            <EditableCell value={String(engHours.projecting)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, projecting: Number(v) } })} />
+            <span className="eng-unit">hrs</span>
+          </div>
+          <div className="eng-hour-item">
+            <label>Drafting</label>
+            <EditableCell value={String(engHours.drafting)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, drafting: Number(v) } })} />
+            <span className="eng-unit">hrs</span>
+          </div>
+          <div className="eng-hour-item">
+            <label>Control</label>
+            <EditableCell value={String(engHours.control)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, control: Number(v) } })} />
+            <span className="eng-unit">hrs</span>
+          </div>
+          <div className="eng-hour-item">
+            <label>Inspection</label>
+            <EditableCell value={String(engHours.inspection)} type="number" onSave={v => updateProject(project.id, { engineeringHours: { ...engHours, inspection: Number(v) } })} />
+            <span className="eng-unit">hrs</span>
+          </div>
+          <div className="eng-hour-item eng-total">
+            <label>합계</label>
+            <span>{engHours.projecting + engHours.drafting + engHours.control + engHours.inspection} hrs</span>
+            <span className="eng-cost">({formatNumber(totalEngCost)} 원)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Direct Cost & Contingency */}
+      <div className="section-card">
+        <h3 className="section-title">기타 비용</h3>
+        <div className="other-cost-grid">
+          <div className="other-cost-item">
+            <label>Direct Cost</label>
+            <EditableCell value={String(directCost)} type="number" onSave={v => updateProject(project.id, { directCost: Number(v) })} />
+            <span className="eng-unit">원</span>
+          </div>
+          <div className="other-cost-item">
+            <label>Contingency</label>
+            <EditableCell value={String(contingency)} type="number" onSave={v => updateProject(project.id, { contingency: Number(v) })} />
+            <span className="eng-unit">원</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Cost Breakdown */}
+      <div className="section-card">
+        <h3 className="section-title">비용 구성 요약</h3>
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>금액 (KRW)</th>
+                <th>비율</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="td-bold">구매 발주</td>
+                <td className="td-cost">{formatNumber(Math.round(purchaseSpentKRW))} 원</td>
+                <td>{totalSpentKRW > 0 ? Math.round((purchaseSpentKRW / totalSpentKRW) * 100) : 0}%</td>
+              </tr>
+              <tr>
+                <td className="td-bold">Engineering Hours</td>
+                <td className="td-cost">{formatNumber(totalEngCost)} 원</td>
+                <td>{totalSpentKRW > 0 ? Math.round((totalEngCost / totalSpentKRW) * 100) : 0}%</td>
+              </tr>
+              <tr>
+                <td className="td-bold">Direct Cost</td>
+                <td className="td-cost">{formatNumber(directCost)} 원</td>
+                <td>{totalSpentKRW > 0 ? Math.round((directCost / totalSpentKRW) * 100) : 0}%</td>
+              </tr>
+              <tr>
+                <td className="td-bold">Contingency</td>
+                <td className="td-cost">{formatNumber(contingency)} 원</td>
+                <td>{totalSpentKRW > 0 ? Math.round((contingency / totalSpentKRW) * 100) : 0}%</td>
+              </tr>
+              <tr>
+                <td className="td-bold">VAT 합계</td>
+                <td className="td-cost">{formatNumber(Math.round(totalVAT))} 원</td>
+                <td>-</td>
+              </tr>
+              <tr style={{ fontWeight: 700, borderTop: '2px solid var(--border-color)' }}>
+                <td>합계</td>
+                <td className="td-cost">{formatNumber(Math.round(totalSpentKRW))} 원</td>
+                <td>100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Breakdown by Currency */}
       <div className="section-card">
         <h3 className="section-title">통화별 집행 현황</h3>
@@ -121,22 +272,22 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             <tbody>
               <tr>
                 <td className="td-bold">KRW</td>
-                <td>{spentKRW.toLocaleString()} 원</td>
-                <td>{spentKRW.toLocaleString()} 원</td>
-                <td>{allPurchases.filter(p => p.currency === 'KRW' && p.status !== 'cancelled').length}건</td>
+                <td>{formatNumber(spentKRW)} 원</td>
+                <td>{formatNumber(spentKRW)} 원</td>
+                <td>{allPurchases.filter(p => p.currency === 'KRW').length}건</td>
               </tr>
               <tr>
                 <td className="td-bold">USD</td>
-                <td>${spentUSD.toLocaleString()}</td>
-                <td>{(spentUSD * exchangeRate).toLocaleString()} 원</td>
-                <td>{allPurchases.filter(p => p.currency === 'USD' && p.status !== 'cancelled').length}건</td>
+                <td>${formatNumber(spentUSD)}</td>
+                <td>{formatNumber(spentUSD * exchangeRate)} 원</td>
+                <td>{allPurchases.filter(p => p.currency === 'USD').length}건</td>
               </tr>
               {spentEUR > 0 && (
                 <tr>
                   <td className="td-bold">EUR</td>
-                  <td>€{spentEUR.toLocaleString()}</td>
-                  <td>{(spentEUR * exchangeRate * 1.1).toLocaleString()} 원</td>
-                  <td>{allPurchases.filter(p => p.currency === 'EUR' && p.status !== 'cancelled').length}건</td>
+                  <td>&euro;{formatNumber(spentEUR)}</td>
+                  <td>{formatNumber(Math.round(spentEUR * exchangeRate * 1.1))} 원</td>
+                  <td>{allPurchases.filter(p => p.currency === 'EUR').length}건</td>
                 </tr>
               )}
             </tbody>
@@ -160,16 +311,16 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             </thead>
             <tbody>
               {project.items.map(item => {
-                const itemKRW = item.purchases.filter(p => p.currency === 'KRW' && p.status !== 'cancelled').reduce((s, p) => s + p.unitPrice * p.quantity, 0);
-                const itemUSD = item.purchases.filter(p => p.currency === 'USD' && p.status !== 'cancelled').reduce((s, p) => s + p.unitPrice * p.quantity, 0);
+                const itemKRW = item.purchases.filter(p => p.currency === 'KRW').reduce((s, p) => s + (p.orderAmount || 0), 0);
+                const itemUSD = item.purchases.filter(p => p.currency === 'USD').reduce((s, p) => s + (p.orderAmount || 0), 0);
                 const itemTotal = itemKRW + itemUSD * exchangeRate;
                 return (
                   <tr key={item.id}>
                     <td className="td-bold">{item.name}</td>
-                    <td>{item.purchases.filter(p => p.status !== 'cancelled').length}건</td>
-                    <td>{itemKRW > 0 ? `${itemKRW.toLocaleString()} 원` : '-'}</td>
-                    <td>{itemUSD > 0 ? `$${itemUSD.toLocaleString()}` : '-'}</td>
-                    <td className="td-cost">{itemTotal.toLocaleString()} 원</td>
+                    <td>{item.purchases.length}건</td>
+                    <td>{itemKRW > 0 ? `${formatNumber(itemKRW)} 원` : '-'}</td>
+                    <td>{itemUSD > 0 ? `$${formatNumber(itemUSD)}` : '-'}</td>
+                    <td className="td-cost">{formatNumber(itemTotal)} 원</td>
                   </tr>
                 );
               })}

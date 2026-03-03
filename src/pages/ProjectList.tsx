@@ -5,6 +5,10 @@ import { ProjectStatusBadge } from '../components/StatusBadge';
 import { PROJECT_COLORS } from '../data/sampleData';
 import type { ProjectStatus } from '../types';
 
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
 export default function ProjectList() {
   const { projects, addProject, deleteProject, toggleHideProject } = useProjects();
   const navigate = useNavigate();
@@ -14,16 +18,24 @@ export default function ProjectList() {
 
   const [formData, setFormData] = useState({
     name: '',
+    projectNo: '',
     description: '',
     status: 'planning' as ProjectStatus,
-    startDate: '',
-    endDate: '',
+    contractDate: '',
+    komDate: '',
+    deliveryDate: '',
     client: '',
     color: PROJECT_COLORS[0],
     hidden: false,
     budgetKRW: 0,
     budgetUSD: 0,
     exchangeRate: 1350,
+    targetGM: 0,
+    currentGM: 0,
+    engineeringHours: { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+    directCost: 0,
+    contingency: 0,
+    needsFactoryManagement: false,
   });
 
   const visibleProjects = showHidden ? projects : projects.filter(p => !p.hidden);
@@ -33,7 +45,15 @@ export default function ProjectList() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addProject(formData);
-    setFormData({ name: '', description: '', status: 'planning', startDate: '', endDate: '', client: '', color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length], hidden: false, budgetKRW: 0, budgetUSD: 0, exchangeRate: 1350 });
+    setFormData({
+      name: '', projectNo: '', description: '', status: 'planning',
+      contractDate: '', komDate: '', deliveryDate: '',
+      client: '', color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
+      hidden: false, budgetKRW: 0, budgetUSD: 0, exchangeRate: 1350,
+      targetGM: 0, currentGM: 0,
+      engineeringHours: { projecting: 0, drafting: 0, control: 0, inspection: 0 },
+      directCost: 0, contingency: 0, needsFactoryManagement: false,
+    });
     setShowForm(false);
   };
 
@@ -68,20 +88,38 @@ export default function ProjectList() {
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div className="form-group">
+                <label>프로젝트 No.</label>
+                <input type="text" value={formData.projectNo} onChange={e => setFormData({ ...formData, projectNo: e.target.value })} placeholder="ZE-2026-XXX" />
+              </div>
+              <div className="form-group">
                 <label>고객사</label>
                 <input type="text" value={formData.client} onChange={e => setFormData({ ...formData, client: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>시작일</label>
-                <input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} required />
+                <label>계약일</label>
+                <input type="date" value={formData.contractDate} onChange={e => setFormData({ ...formData, contractDate: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>종료일</label>
-                <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} required />
+                <label>KOM Date</label>
+                <input type="date" value={formData.komDate} onChange={e => setFormData({ ...formData, komDate: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>납기일 (최초 호기)</label>
+                <input type="date" value={formData.deliveryDate} onChange={e => setFormData({ ...formData, deliveryDate: e.target.value })} required />
               </div>
               <div className="form-group full-width">
                 <label>설명</label>
                 <input type="text" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="factory-check-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.needsFactoryManagement}
+                    onChange={e => setFormData({ ...formData, needsFactoryManagement: e.target.checked })}
+                  />
+                  공장 관리 필요
+                </label>
               </div>
             </div>
             <div className="form-actions">
@@ -98,7 +136,8 @@ export default function ProjectList() {
           const done = project.items.filter(i => i.status === 'completed').length;
           const progress = items > 0 ? Math.round((done / items) * 100) : 0;
           const purchases = project.items.flatMap(i => i.purchases);
-          const pendingPurchases = purchases.filter(p => p.status !== 'delivered' && p.status !== 'cancelled').length;
+          const pendingPurchases = purchases.filter(p => p.status !== 'delivered' && p.status !== 'partial_delivered').length;
+          const totalBudget = (project.budgetKRW || 0) + (project.budgetUSD || 0) * (project.exchangeRate || 1350);
 
           return (
             <div
@@ -108,7 +147,10 @@ export default function ProjectList() {
               onClick={() => navigate(`/project/${project.id}`)}
             >
               <div className="project-card-header">
-                <h3>{project.name}</h3>
+                <div>
+                  <h3>{project.name}</h3>
+                  {project.projectNo && <span className="project-card-no">No. {project.projectNo}</span>}
+                </div>
                 <div className="project-card-actions" onClick={e => e.stopPropagation()}>
                   <button
                     className="btn-icon"
@@ -130,8 +172,16 @@ export default function ProjectList() {
               <p className="project-card-desc">{project.description}</p>
               <div className="project-card-meta">
                 <ProjectStatusBadge status={project.status} />
-                <span className="meta-text">{project.startDate} ~ {project.endDate}</span>
+                <span className="meta-text">
+                  {project.contractDate || '-'} ~ {project.deliveryDate || '-'}
+                </span>
               </div>
+              {totalBudget > 0 && (
+                <div className="project-card-budget">
+                  예산: {formatNumber(Math.round(totalBudget))} 원
+                  {project.targetGM > 0 && <span className="gm-badge">GM {project.targetGM}%</span>}
+                </div>
+              )}
               <div className="project-card-stats">
                 <div className="stat">
                   <span className="stat-value">{items}</span>

@@ -1,4 +1,4 @@
-import type { ProjectStatus, ItemStatus, PurchaseStatus, ProcurementStatus } from '../types';
+import type { ProjectStatus, ItemStatus, PurchaseStatus, ProcurementStatus, ItemManagementStatus } from '../types';
 
 const projectStatusMap: Record<ProjectStatus, { label: string; className: string }> = {
   planning: { label: '계획 중', className: 'badge-planning' },
@@ -15,11 +15,14 @@ const itemStatusMap: Record<ItemStatus, { label: string; className: string }> = 
 };
 
 const purchaseStatusMap: Record<PurchaseStatus, { label: string; className: string }> = {
-  pending: { label: '발주 대기', className: 'badge-planning' },
-  ordered: { label: '발주 완료', className: 'badge-ordered' },
-  shipped: { label: '운송 중', className: 'badge-progress' },
-  delivered: { label: '입고 완료', className: 'badge-completed' },
-  cancelled: { label: '취소', className: 'badge-hold' },
+  rfq_writing: { label: 'RFQ 작성 중', className: 'badge-planning' },
+  internal_approval: { label: '내부 결재 중', className: 'badge-progress' },
+  zoe_approval: { label: 'ZOE 결재 중', className: 'badge-progress' },
+  po_completed: { label: '발주 완료', className: 'badge-ordered' },
+  manufacturing: { label: '제작 중', className: 'badge-mfg' },
+  inspecting: { label: '검사 중', className: 'badge-mfg-done' },
+  delivered: { label: '납품 완료', className: 'badge-completed' },
+  partial_delivered: { label: '부분 납품 완료', className: 'badge-partial' },
 };
 
 const procurementStatusMap: Record<ProcurementStatus, { label: string; className: string }> = {
@@ -35,6 +38,15 @@ const procurementStatusMap: Record<ProcurementStatus, { label: string; className
   delivered: { label: '납품 완료', className: 'badge-completed' },
 };
 
+const itemManagementStatusMap: Record<ItemManagementStatus, { label: string; className: string }> = {
+  quoting: { label: '견적 중', className: 'badge-planning' },
+  approval: { label: '결재 중', className: 'badge-progress' },
+  manufacturing: { label: '제작 중', className: 'badge-mfg' },
+  delivering: { label: '납품 중', className: 'badge-mfg-done' },
+  delivered: { label: '납품 완료', className: 'badge-completed' },
+  partial_delivered: { label: '부분 납품 완료', className: 'badge-partial' },
+};
+
 export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
   const info = projectStatusMap[status];
   return <span className={`badge ${info.className}`}>{info.label}</span>;
@@ -46,11 +58,16 @@ export function ItemStatusBadge({ status }: { status: ItemStatus }) {
 }
 
 export function PurchaseStatusBadge({ status }: { status: PurchaseStatus }) {
-  const info = purchaseStatusMap[status];
+  const info = purchaseStatusMap[status] || { label: status, className: 'badge-planning' };
   return <span className={`badge ${info.className}`}>{info.label}</span>;
 }
 
 export function ProcurementStatusBadge({ status }: { status: ProcurementStatus }) {
   const info = procurementStatusMap[status] || { label: status, className: 'badge-planning' };
+  return <span className={`badge ${info.className}`}>{info.label}</span>;
+}
+
+export function ItemManagementStatusBadge({ status }: { status: ItemManagementStatus }) {
+  const info = itemManagementStatusMap[status] || { label: status, className: 'badge-planning' };
   return <span className={`badge ${info.className}`}>{info.label}</span>;
 }

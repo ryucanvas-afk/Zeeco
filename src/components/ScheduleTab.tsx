@@ -34,7 +34,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const selectedItem = project.items.find(i => i.id === selectedItemId);
 
   const allSchedules = project.items.flatMap(item =>
-    item.schedules.map(s => ({ ...s, itemName: item.name, itemCategory: item.category }))
+    item.schedules.map(s => ({ ...s, itemName: item.name }))
   );
 
   const timelineStart = allSchedules.length > 0
@@ -127,7 +127,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               className="item-select"
             >
               {project.items.map(item => (
-                <option key={item.id} value={item.id}>{item.name} ({item.category})</option>
+                <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
             <button className="btn btn-primary" onClick={() => { setShowForm(true); setFormData(emptySchedule); }}>
