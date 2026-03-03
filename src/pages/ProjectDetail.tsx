@@ -1,17 +1,31 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
-import { ProjectStatusBadge, ItemStatusBadge } from '../components/StatusBadge';
+import EditableCell from '../components/EditableCell';
 import ScheduleTab from '../components/ScheduleTab';
 import PurchaseTab from '../components/PurchaseTab';
-import type { ItemStatus } from '../types';
+import type { ItemStatus, ProjectStatus } from '../types';
 
 type TabType = 'overview' | 'schedule' | 'purchase';
+
+const projectStatusOptions = [
+  { value: 'planning', label: '계획 중' },
+  { value: 'in_progress', label: '진행 중' },
+  { value: 'completed', label: '완료' },
+  { value: 'on_hold', label: '보류' },
+];
+
+const itemStatusOptions = [
+  { value: 'not_started', label: '미착수' },
+  { value: 'in_progress', label: '진행 중' },
+  { value: 'completed', label: '완료' },
+  { value: 'delayed', label: '지연' },
+];
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, addItem, deleteItem } = useProjects();
+  const { projects, updateProject, addItem, updateItem, deleteItem } = useProjects();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemForm, setItemForm] = useState({ name: '', category: '', status: 'not_started' as ItemStatus });
@@ -45,15 +59,43 @@ export default function ProjectDetail() {
         <span className="breadcrumb-current">{project.name}</span>
       </div>
 
-      {/* Project Header */}
+      {/* Project Header - Editable */}
       <div className="project-header-card">
         <div className="project-header-info">
-          <h2>{project.name}</h2>
-          <p className="project-header-desc">{project.description}</p>
+          <h2>
+            <EditableCell
+              value={project.name}
+              onSave={v => updateProject(project.id, { name: v })}
+            />
+          </h2>
+          <p className="project-header-desc">
+            <EditableCell
+              value={project.description}
+              onSave={v => updateProject(project.id, { description: v })}
+              placeholder="설명을 입력하세요"
+            />
+          </p>
           <div className="project-header-meta">
-            <ProjectStatusBadge status={project.status} />
-            <span>고객사: {project.client}</span>
-            <span>기간: {project.startDate} ~ {project.endDate}</span>
+            <EditableCell
+              value={project.status}
+              type="select"
+              options={projectStatusOptions}
+              onSave={v => updateProject(project.id, { status: v as ProjectStatus })}
+            />
+            <span>고객사: <EditableCell
+              value={project.client}
+              onSave={v => updateProject(project.id, { client: v })}
+            /></span>
+            <span>시작: <EditableCell
+              value={project.startDate}
+              type="date"
+              onSave={v => updateProject(project.id, { startDate: v })}
+            /></span>
+            <span>종료: <EditableCell
+              value={project.endDate}
+              type="date"
+              onSave={v => updateProject(project.id, { endDate: v })}
+            /></span>
             <span>품목: {project.items.length}개</span>
           </div>
         </div>
@@ -114,11 +156,26 @@ export default function ProjectDetail() {
                   <div key={item.id} className="item-card">
                     <div className="item-card-header">
                       <div>
-                        <h4>{item.name}</h4>
-                        <span className="item-category">{item.category}</span>
+                        <h4>
+                          <EditableCell
+                            value={item.name}
+                            onSave={v => updateItem(project.id, item.id, { name: v })}
+                          />
+                        </h4>
+                        <span className="item-category">
+                          <EditableCell
+                            value={item.category}
+                            onSave={v => updateItem(project.id, item.id, { category: v })}
+                          />
+                        </span>
                       </div>
                       <div className="item-card-actions">
-                        <ItemStatusBadge status={item.status} />
+                        <EditableCell
+                          value={item.status}
+                          type="select"
+                          options={itemStatusOptions}
+                          onSave={v => updateItem(project.id, item.id, { status: v as ItemStatus })}
+                        />
                         <button
                           className="btn-icon btn-danger"
                           onClick={() => deleteItem(project.id, item.id)}

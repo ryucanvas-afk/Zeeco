@@ -1,8 +1,22 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Project, ProjectItem, Schedule, Purchase } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
+
+const STORAGE_KEY = 'zeeco-projects';
+
+function loadProjects(): Project[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return sampleProjects;
+}
 
 interface ProjectContextType {
   projects: Project[];
@@ -18,12 +32,23 @@ interface ProjectContextType {
   addPurchase: (projectId: string, itemId: string, purchase: Omit<Purchase, 'id' | 'itemId'>) => void;
   updatePurchase: (projectId: string, itemId: string, purchaseId: string, updates: Partial<Purchase>) => void;
   deletePurchase: (projectId: string, itemId: string, purchaseId: string) => void;
+  resetData: () => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(sampleProjects);
+  const [projects, setProjects] = useState<Project[]>(loadProjects);
+
+  // Persist to localStorage on every change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  }, [projects]);
+
+  const resetData = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setProjects(sampleProjects);
+  };
 
   const addProject = (project: Omit<Project, 'id' | 'items'>) => {
     setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [] }]);
@@ -155,6 +180,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addItem, updateItem, deleteItem,
       addSchedule, updateSchedule, deleteSchedule,
       addPurchase, updatePurchase, deletePurchase,
+      resetData,
     }}>
       {children}
     </ProjectContext.Provider>

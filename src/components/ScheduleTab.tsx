@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { Project, Schedule, ItemStatus } from '../types';
+import type { Project, Schedule } from '../types';
 import { useProjects } from '../context/ProjectContext';
-import { ItemStatusBadge } from './StatusBadge';
+import EditableCell from './EditableCell';
 import { format, differenceInDays, parseISO, isValid } from 'date-fns';
 
 interface ScheduleTabProps {
@@ -18,12 +18,18 @@ const emptySchedule: Omit<Schedule, 'id' | 'itemId'> = {
   notes: '',
 };
 
+const statusOptions = [
+  { value: 'not_started', label: '미착수' },
+  { value: 'in_progress', label: '진행 중' },
+  { value: 'completed', label: '완료' },
+  { value: 'delayed', label: '지연' },
+];
+
 export default function ScheduleTab({ project }: ScheduleTabProps) {
   const { addSchedule, updateSchedule, deleteSchedule } = useProjects();
   const [selectedItemId, setSelectedItemId] = useState<string>(project.items[0]?.id || '');
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(emptySchedule);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const selectedItem = project.items.find(i => i.id === selectedItemId);
 
@@ -50,28 +56,14 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItemId) return;
-    if (editingId) {
-      updateSchedule(project.id, selectedItemId, editingId, formData);
-      setEditingId(null);
-    } else {
-      addSchedule(project.id, selectedItemId, formData);
-    }
+    addSchedule(project.id, selectedItemId, formData);
     setFormData(emptySchedule);
     setShowForm(false);
   };
 
-  const handleEdit = (schedule: Schedule) => {
-    setFormData({
-      task: schedule.task,
-      startDate: schedule.startDate,
-      endDate: schedule.endDate,
-      progress: schedule.progress,
-      status: schedule.status,
-      assignee: schedule.assignee,
-      notes: schedule.notes,
-    });
-    setEditingId(schedule.id);
-    setShowForm(true);
+  const handleInlineUpdate = (scheduleId: string, field: string, value: string | number) => {
+    if (!selectedItemId) return;
+    updateSchedule(project.id, selectedItemId, scheduleId, { [field]: value });
   };
 
   return (
@@ -138,7 +130,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 <option key={item.id} value={item.id}>{item.name} ({item.category})</option>
               ))}
             </select>
-            <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditingId(null); setFormData(emptySchedule); }}>
+            <button className="btn btn-primary" onClick={() => { setShowForm(true); setFormData(emptySchedule); }}>
               + 일정 추가
             </button>
           </div>
@@ -160,19 +152,6 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>진행률 ({formData.progress}%)</label>
-                <input type="range" min="0" max="100" value={formData.progress} onChange={e => setFormData({ ...formData, progress: Number(e.target.value) })} />
-              </div>
-              <div className="form-group">
-                <label>상태</label>
-                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as ItemStatus })}>
-                  <option value="not_started">미착수</option>
-                  <option value="in_progress">진행 중</option>
-                  <option value="completed">완료</option>
-                  <option value="delayed">지연</option>
-                </select>
-              </div>
-              <div className="form-group">
                 <label>담당자</label>
                 <input type="text" value={formData.assignee} onChange={e => setFormData({ ...formData, assignee: e.target.value })} />
               </div>
@@ -182,11 +161,13 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               </div>
             </div>
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary">{editingId ? '수정' : '추가'}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); }}>취소</button>
+              <button type="submit" className="btn btn-primary">추가</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>취소</button>
             </div>
           </form>
         )}
+
+        <p className="edit-hint">셀을 클릭하면 직접 수정할 수 있습니다</p>
 
         <div className="table-wrapper">
           <table className="data-table">
@@ -205,9 +186,26 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
             <tbody>
               {selectedItem?.schedules.map(schedule => (
                 <tr key={schedule.id}>
-                  <td className="td-bold">{schedule.task}</td>
-                  <td>{schedule.startDate}</td>
-                  <td>{schedule.endDate}</td>
+                  <td className="td-bold">
+                    <EditableCell
+                      value={schedule.task}
+                      onSave={v => handleInlineUpdate(schedule.id, 'task', v)}
+                    />
+                  </td>
+                  <td>
+                    <EditableCell
+                      value={schedule.startDate}
+                      type="date"
+                      onSave={v => handleInlineUpdate(schedule.id, 'startDate', v)}
+                    />
+                  </td>
+                  <td>
+                    <EditableCell
+                      value={schedule.endDate}
+                      type="date"
+                      onSave={v => handleInlineUpdate(schedule.id, 'endDate', v)}
+                    />
+                  </td>
                   <td>
                     <div className="progress-cell">
                       <div className="progress-bar-bg">
@@ -219,15 +217,37 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                           }}
                         />
                       </div>
-                      <span>{schedule.progress}%</span>
+                      <EditableCell
+                        value={String(schedule.progress)}
+                        type="number"
+                        onSave={v => handleInlineUpdate(schedule.id, 'progress', Math.min(100, Math.max(0, Number(v))))}
+                      />
                     </div>
                   </td>
-                  <td><ItemStatusBadge status={schedule.status} /></td>
-                  <td>{schedule.assignee}</td>
-                  <td className="td-notes">{schedule.notes}</td>
+                  <td>
+                    <EditableCell
+                      value={schedule.status}
+                      type="select"
+                      options={statusOptions}
+                      onSave={v => handleInlineUpdate(schedule.id, 'status', v)}
+                    />
+                  </td>
+                  <td>
+                    <EditableCell
+                      value={schedule.assignee}
+                      onSave={v => handleInlineUpdate(schedule.id, 'assignee', v)}
+                      placeholder="담당자"
+                    />
+                  </td>
+                  <td className="td-notes">
+                    <EditableCell
+                      value={schedule.notes}
+                      onSave={v => handleInlineUpdate(schedule.id, 'notes', v)}
+                      placeholder="메모"
+                    />
+                  </td>
                   <td>
                     <div className="action-btns">
-                      <button className="btn-icon" onClick={() => { setSelectedItemId(selectedItem.id); handleEdit(schedule); }} title="수정">✎</button>
                       <button className="btn-icon btn-danger" onClick={() => deleteSchedule(project.id, selectedItem.id, schedule.id)} title="삭제">✕</button>
                     </div>
                   </td>
