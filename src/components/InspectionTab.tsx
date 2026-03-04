@@ -14,7 +14,40 @@ function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
+function dateToStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function isDateInRange(dateStr: string, startStr: string, endStr: string): boolean {
+  if (!startStr) return false;
+  if (!endStr) return dateStr === startStr;
+  return dateStr >= startStr && dateStr <= endStr;
+}
+
+function getRangePosition(dateStr: string, startStr: string, endStr: string): 'single' | 'start' | 'middle' | 'end' | null {
+  if (!startStr) return null;
+  if (!endStr || startStr === endStr) {
+    return dateStr === startStr ? 'single' : null;
+  }
+  if (dateStr === startStr) return 'start';
+  if (dateStr === endStr) return 'end';
+  if (dateStr > startStr && dateStr < endStr) return 'middle';
+  return null;
+}
+
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+const RANGE_COLORS = [
+  { bg: 'rgba(59, 130, 246, 0.18)', border: '#3b82f6' },
+  { bg: 'rgba(16, 185, 129, 0.18)', border: '#10b981' },
+  { bg: 'rgba(245, 158, 11, 0.18)', border: '#f59e0b' },
+  { bg: 'rgba(99, 102, 241, 0.18)', border: '#6366f1' },
+  { bg: 'rgba(236, 72, 153, 0.18)', border: '#ec4899' },
+  { bg: 'rgba(20, 184, 166, 0.18)', border: '#14b8a6' },
+];
 
 export default function InspectionTab({ project }: InspectionTabProps) {
   const { addInspection, updateInspection, deleteInspection } = useProjects();
@@ -26,6 +59,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     date: '',
+    endDate: '',
     items: [''],
     categories: [''],
     location: '',
@@ -56,7 +90,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
 
   const getInspectionsForDay = (day: number): InspectionEntry[] => {
     const dateStr = getDateStr(day);
-    return inspections.filter(ins => ins.date === dateStr);
+    return inspections.filter(ins => isDateInRange(dateStr, ins.date, ins.endDate || ins.date));
   };
 
   const handleDayClick = (day: number) => {
@@ -69,6 +103,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
   const openAddForm = (dateStr?: string) => {
     setFormData({
       date: dateStr || selectedDate || '',
+      endDate: '',
       items: [''],
       categories: [''],
       location: '',
@@ -84,6 +119,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
   const openEditForm = (ins: InspectionEntry) => {
     setFormData({
       date: ins.date,
+      endDate: ins.endDate || '',
       items: ins.items.length > 0 ? [...ins.items] : [''],
       categories: ins.categories.length > 0 ? [...ins.categories] : [''],
       location: ins.location,
@@ -101,6 +137,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     const cleanCategories = formData.categories.filter(x => x.trim());
     const data = {
       date: formData.date,
+      endDate: formData.endDate,
       items: cleanItems,
       categories: cleanCategories,
       location: formData.location,
@@ -134,7 +171,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     setFormData({ ...formData, categories: newCats });
   };
 
-  const selectedInspections = selectedDate ? inspections.filter(ins => ins.date === selectedDate) : [];
+  const selectedInspections = selectedDate ? inspections.filter(ins => isDateInRange(selectedDate, ins.date, ins.endDate || ins.date)) : [];
 
   // Build calendar grid
   const calendarDays: (number | null)[] = [];
@@ -150,7 +187,18 @@ export default function InspectionTab({ project }: InspectionTabProps) {
   const lastRow = calendarRows[calendarRows.length - 1];
   while (lastRow.length < 7) lastRow.push(null);
 
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = dateToStr(today);
+
+  // Assign colors to inspections for range visualization
+  const insColorMap = new Map<string, number>();
+  inspections.forEach((ins, idx) => {
+    insColorMap.set(ins.id, idx % RANGE_COLORS.length);
+  });
+
+  const formatDateRange = (ins: InspectionEntry) => {
+    if (!ins.endDate || ins.date === ins.endDate) return ins.date;
+    return `${ins.date} ~ ${ins.endDate}`;
+  };
 
   return (
     <div className="inspection-tab">
@@ -159,6 +207,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
         <button className="btn btn-secondary" onClick={prevMonth}>&lt;</button>
         <span className="insp-calendar-title">{year}년 {MONTH_NAMES[month]}</span>
         <button className="btn btn-secondary" onClick={nextMonth}>&gt;</button>
+        <button className="btn btn-sm btn-primary" onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); }} style={{ marginLeft: 8 }}>오늘</button>
       </div>
 
       {/* Large Calendar Grid */}
@@ -193,16 +242,38 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                       )}
                     </div>
                     <div className="insp-cell-content">
-                      {dayInspections.map(ins => (
-                        <div key={ins.id} className="insp-cell-entry" onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}>
-                          <div className="insp-cell-items">
-                            {ins.items.map((item, i) => (
-                              <span key={i} className="insp-cell-tag">{item}</span>
-                            ))}
+                      {dayInspections.map(ins => {
+                        const colorIdx = insColorMap.get(ins.id) || 0;
+                        const colors = RANGE_COLORS[colorIdx];
+                        const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
+                        const rangeClass = pos && pos !== 'single' ? `insp-range-${pos}` : '';
+
+                        return (
+                          <div
+                            key={ins.id}
+                            className={`insp-cell-entry ${rangeClass}`}
+                            style={{
+                              background: colors.bg,
+                              borderLeftColor: colors.border,
+                            }}
+                            onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
+                          >
+                            <div className="insp-cell-items">
+                              {ins.items.map((item, i) => (
+                                <span key={i} className="insp-cell-tag">{item}</span>
+                              ))}
+                            </div>
+                            {ins.categories.length > 0 && ins.categories[0] && (
+                              <div className="insp-cell-cats">
+                                {ins.categories.map((cat, i) => (
+                                  <span key={i} className="insp-cell-cat-tag">{cat}</span>
+                                ))}
+                              </div>
+                            )}
+                            {ins.location && <span className="insp-cell-location">{ins.location}</span>}
                           </div>
-                          {ins.location && <span className="insp-cell-location">{ins.location}</span>}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -224,8 +295,12 @@ export default function InspectionTab({ project }: InspectionTabProps) {
             <form className="inline-form" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>검사 일자</label>
+                  <label>검사 시작일</label>
                   <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label>검사 종료일 (기간 검사 시)</label>
+                  <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} min={formData.date} />
                 </div>
                 <div className="form-group">
                   <label>검사 장소</label>
@@ -286,7 +361,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
               {selectedInspections.map(ins => (
                 <div key={ins.id} className="inspection-card">
                   <div className="inspection-card-header">
-                    <span className="inspection-date">{ins.date}</span>
+                    <span className="inspection-date">{formatDateRange(ins)}</span>
                     <div className="action-btns">
                       <button className="btn-icon" onClick={() => openEditForm(ins)} title="수정">&#9998;</button>
                       <button className="btn-icon btn-danger" onClick={() => deleteInspection(project.id, ins.id)} title="삭제">✕</button>

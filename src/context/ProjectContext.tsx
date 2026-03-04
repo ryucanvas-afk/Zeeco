@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 const VERSION_KEY = 'zeeco-schema-version';
 
 // Migrate old data to new schema instead of resetting
@@ -38,7 +38,17 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     directCost: (p.directCost as number) || 0,
     contingency: (p.contingency as number) || 0,
     needsFactoryManagement: (p.needsFactoryManagement as boolean) || false,
-    inspections: (p.inspections as Project['inspections']) || [],
+    inspections: ((p.inspections as Record<string, unknown>[]) || []).map((ins: Record<string, unknown>) => ({
+      id: (ins.id as string) || uuidv4(),
+      date: (ins.date as string) || '',
+      endDate: (ins.endDate as string) || '',
+      items: (ins.items as string[]) || [],
+      categories: (ins.categories as string[]) || [],
+      location: (ins.location as string) || '',
+      inspector: (ins.inspector as string) || '',
+      observer: (ins.observer as string) || '',
+      notes: (ins.notes as string) || '',
+    })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>) => ({
       id: (i.id as string) || uuidv4(),
@@ -128,6 +138,7 @@ interface ProjectContextType {
   addFactoryPurchase: (projectId: string, fp: Omit<FactoryPurchase, 'id'>) => void;
   updateFactoryPurchase: (projectId: string, fpId: string, updates: Partial<FactoryPurchase>) => void;
   deleteFactoryPurchase: (projectId: string, fpId: string) => void;
+  importData: (data: Record<string, unknown>[]) => void;
   resetData: () => void;
 }
 
@@ -140,6 +151,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
   }, [projects]);
+
+  const importData = (data: Record<string, unknown>[]) => {
+    const migrated = migrateProjects(data);
+    setProjects(migrated);
+  };
 
   const resetData = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -391,7 +407,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addPurchase, updatePurchase, deletePurchase, reorderPurchases,
       addInspection, updateInspection, deleteInspection,
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
-      resetData,
+      importData, resetData,
     }}>
       {children}
     </ProjectContext.Provider>

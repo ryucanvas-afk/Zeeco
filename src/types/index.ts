@@ -128,6 +128,7 @@ export interface Purchase {
 export interface InspectionEntry {
   id: string;
   date: string;
+  endDate: string;
   items: string[];
   categories: string[];
   location: string;
