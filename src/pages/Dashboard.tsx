@@ -2,6 +2,10 @@ import { useProjects } from '../context/ProjectContext';
 import MindMap from '../components/MindMap';
 import { ProjectStatusBadge } from '../components/StatusBadge';
 
+function dateToStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function Dashboard() {
   const { projects } = useProjects();
 
@@ -13,6 +17,19 @@ export default function Dashboard() {
   const inProgressProjects = visibleProjects.filter(p => p.status === 'in_progress').length;
   const allPurchases = visibleProjects.flatMap(p => p.items.flatMap(i => i.purchases));
   const pendingPurchases = allPurchases.filter(p => p.status !== 'delivered' && p.status !== 'partial_delivered').length;
+
+  // Upcoming inspections (next 30 days)
+  const todayStr = dateToStr(new Date());
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 30);
+  const futureStr = dateToStr(futureDate);
+
+  const upcomingInspections = visibleProjects.flatMap(p =>
+    (p.inspections || []).map(ins => ({ ...ins, projectName: p.name, projectId: p.id }))
+  ).filter(ins => {
+    const endDate = ins.endDate || ins.date;
+    return endDate >= todayStr && ins.date <= futureStr;
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="dashboard">
@@ -50,6 +67,39 @@ export default function Dashboard() {
         <h3 className="section-title">프로젝트 마인드맵</h3>
         <MindMap projects={projects} />
       </div>
+
+      {/* Upcoming Inspections */}
+      {upcomingInspections.length > 0 && (
+        <div className="section-card">
+          <h3 className="section-title">예정된 검사 일정 (30일 이내)</h3>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>프로젝트</th>
+                  <th>검사 기간</th>
+                  <th>검사 품목</th>
+                  <th>검사 항목</th>
+                  <th>장소</th>
+                  <th>담당자</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upcomingInspections.slice(0, 10).map(ins => (
+                  <tr key={ins.id}>
+                    <td className="td-bold">{ins.projectName}</td>
+                    <td>{ins.endDate && ins.endDate !== ins.date ? `${ins.date} ~ ${ins.endDate}` : ins.date}</td>
+                    <td>{ins.items.join(', ') || '-'}</td>
+                    <td>{ins.categories.join(', ') || '-'}</td>
+                    <td>{ins.location || '-'}</td>
+                    <td>{ins.inspector || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="section-card">
