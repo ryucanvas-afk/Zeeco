@@ -211,7 +211,7 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
       let apiBody: Record<string, unknown>;
 
       const openaiModel = modelTier === 'quality' ? 'gpt-4o' : 'gpt-4o-mini';
-      const anthropicModel = modelTier === 'quality' ? 'claude-sonnet-4-5-20241022' : 'claude-haiku-4-5-20251001';
+      const anthropicModel = modelTier === 'quality' ? 'claude-sonnet-4-5-20250929' : 'claude-haiku-4-5-20251001';
 
       if (apiProvider === 'openai') {
         apiBody = {
