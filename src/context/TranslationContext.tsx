@@ -68,7 +68,7 @@ function loadData(): StoredData {
       return {
         openaiKey: data.openaiKey || data.apiKey || '',
         anthropicKey: data.anthropicKey || '',
-        apiProvider: data.apiProvider || 'openai',
+        apiProvider: data.apiProvider || 'anthropic',
         toneStyle: data.toneStyle || 'formal',
         savedPhrases: data.savedPhrases || [],
         history: data.history || [],
@@ -78,7 +78,7 @@ function loadData(): StoredData {
   return {
     openaiKey: '',
     anthropicKey: '',
-    apiProvider: 'openai',
+    apiProvider: 'anthropic',
     toneStyle: 'formal',
     savedPhrases: [],
     history: [],
@@ -202,62 +202,59 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
         };
       }
 
-      // Try server proxy first, fallback to direct API call
+      // Direct API call (works on GitHub Pages / external access)
+      let directUrl: string;
+      let directHeaders: Record<string, string>;
+
+      if (apiProvider === 'openai') {
+        directUrl = 'https://api.openai.com/v1/chat/completions';
+        directHeaders = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        };
+      } else {
+        directUrl = 'https://api.anthropic.com/v1/messages';
+        directHeaders = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        };
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let data: any;
 
       try {
-        const proxyRes = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: apiProvider, apiKey, body: apiBody }),
-        });
-        if (proxyRes.ok) {
-          data = await proxyRes.json();
-        } else if (proxyRes.status === 404 || proxyRes.status === 405) {
-          throw new Error('proxy unavailable');
-        } else {
-          const err = await proxyRes.json().catch(() => ({}));
-          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${proxyRes.status}`);
-        }
-      } catch (proxyErr) {
-        // Proxy unavailable (GitHub Pages etc.) - call API directly
-        const errMsg = proxyErr instanceof Error ? proxyErr.message : '';
-        if (errMsg !== 'proxy unavailable' && !errMsg.includes('Failed to fetch')) {
-          throw proxyErr;
-        }
-
-        let directUrl: string;
-        let directHeaders: Record<string, string>;
-
-        if (apiProvider === 'openai') {
-          directUrl = 'https://api.openai.com/v1/chat/completions';
-          directHeaders = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          };
-        } else {
-          directUrl = 'https://api.anthropic.com/v1/messages';
-          directHeaders = {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          };
-        }
-
-        const directRes = await fetch(directUrl, {
+        const res = await fetch(directUrl, {
           method: 'POST',
           headers: directHeaders,
           body: JSON.stringify(apiBody),
         });
 
-        if (!directRes.ok) {
-          const err = await directRes.json().catch(() => ({}));
-          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${directRes.status}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `API 오류: ${res.status}`);
+        }
+        data = await res.json();
+      } catch (directErr) {
+        // Direct call failed (CORS etc.) - try server proxy as fallback
+        const errMsg = directErr instanceof Error ? directErr.message : '';
+        if (!errMsg.includes('Failed to fetch') && !errMsg.includes('NetworkError')) {
+          throw directErr;
         }
 
-        data = await directRes.json();
+        const proxyRes = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: apiProvider, apiKey, body: apiBody }),
+        });
+
+        if (!proxyRes.ok) {
+          const err = await proxyRes.json().catch(() => ({}));
+          throw new Error(err.error?.message || `API 오류: ${proxyRes.status}`);
+        }
+        data = await proxyRes.json();
       }
 
       if (apiProvider === 'openai') {

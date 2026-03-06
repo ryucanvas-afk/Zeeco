@@ -419,13 +419,15 @@ export default function Translation() {
                   onClick={() => setApiProvider('openai')}
                 >
                   OpenAI (GPT-4o-mini)
+                  <span className="key-status" style={{ color: 'var(--accent-yellow)' }}>서버 필요</span>
                   {openaiKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
                 <button
                   className={`provider-btn ${apiProvider === 'anthropic' ? 'active' : ''}`}
                   onClick={() => setApiProvider('anthropic')}
                 >
-                  Anthropic (Claude)
+                  Anthropic (Claude) - 추천
+                  <span className="key-status key-set">외부 접속 가능</span>
                   {anthropicKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
               </div>
