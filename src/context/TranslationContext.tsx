@@ -202,23 +202,63 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
         };
       }
 
-      // Call through server proxy to avoid CORS issues
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: apiProvider,
-          apiKey,
-          body: apiBody,
-        }),
-      });
+      // Try server proxy first, fallback to direct API call
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any;
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API 오류: ${response.status}`);
+      try {
+        const proxyRes = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: apiProvider, apiKey, body: apiBody }),
+        });
+        if (proxyRes.ok) {
+          data = await proxyRes.json();
+        } else if (proxyRes.status === 404 || proxyRes.status === 405) {
+          throw new Error('proxy unavailable');
+        } else {
+          const err = await proxyRes.json().catch(() => ({}));
+          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${proxyRes.status}`);
+        }
+      } catch (proxyErr) {
+        // Proxy unavailable (GitHub Pages etc.) - call API directly
+        const errMsg = proxyErr instanceof Error ? proxyErr.message : '';
+        if (errMsg !== 'proxy unavailable' && !errMsg.includes('Failed to fetch')) {
+          throw proxyErr;
+        }
+
+        let directUrl: string;
+        let directHeaders: Record<string, string>;
+
+        if (apiProvider === 'openai') {
+          directUrl = 'https://api.openai.com/v1/chat/completions';
+          directHeaders = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          };
+        } else {
+          directUrl = 'https://api.anthropic.com/v1/messages';
+          directHeaders = {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          };
+        }
+
+        const directRes = await fetch(directUrl, {
+          method: 'POST',
+          headers: directHeaders,
+          body: JSON.stringify(apiBody),
+        });
+
+        if (!directRes.ok) {
+          const err = await directRes.json().catch(() => ({}));
+          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${directRes.status}`);
+        }
+
+        data = await directRes.json();
       }
-
-      const data = await response.json();
 
       if (apiProvider === 'openai') {
         result = data.choices[0].message.content.trim();
