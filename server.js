@@ -10,10 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(compression());
-app.use(express.static(join(__dirname, 'dist'), { maxAge: '1d' }));
 
-// SPA fallback - all routes serve index.html (Express 5 syntax)
-app.get('/{*splat}', (_req, res) => {
+// Serve static files under /Zeeco/ base path (matches vite.config base)
+app.use('/Zeeco', express.static(join(__dirname, 'dist'), { maxAge: '1d' }));
+
+// Redirect root to /Zeeco/
+app.get('/', (_req, res) => {
+  res.redirect('/Zeeco/');
+});
+
+// SPA fallback - all routes under /Zeeco serve index.html (Express 5 syntax)
+app.get('/Zeeco/{*splat}', (_req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
