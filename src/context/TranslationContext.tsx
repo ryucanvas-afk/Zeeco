@@ -20,9 +20,11 @@ BMS=Burner Management System, 화염 감지기=Flame Detector, 점화기=Ignitor
 export type ToneStyle = 'formal' | 'casual';
 
 interface TranslationContextType {
-  // API Key
-  apiKey: string;
-  setApiKey: (key: string) => void;
+  // API Keys (separate per provider)
+  openaiKey: string;
+  setOpenaiKey: (key: string) => void;
+  anthropicKey: string;
+  setAnthropicKey: (key: string) => void;
   apiProvider: 'openai' | 'anthropic';
   setApiProvider: (provider: 'openai' | 'anthropic') => void;
 
@@ -50,7 +52,8 @@ const TranslationContext = createContext<TranslationContextType | null>(null);
 const STORAGE_KEY = 'zeeco-translation';
 
 interface StoredData {
-  apiKey: string;
+  openaiKey: string;
+  anthropicKey: string;
   apiProvider: 'openai' | 'anthropic';
   toneStyle: ToneStyle;
   savedPhrases: SavedPhrase[];
@@ -63,7 +66,8 @@ function loadData(): StoredData {
     if (raw) {
       const data = JSON.parse(raw);
       return {
-        apiKey: data.apiKey || '',
+        openaiKey: data.openaiKey || data.apiKey || '',
+        anthropicKey: data.anthropicKey || '',
         apiProvider: data.apiProvider || 'openai',
         toneStyle: data.toneStyle || 'formal',
         savedPhrases: data.savedPhrases || [],
@@ -72,7 +76,8 @@ function loadData(): StoredData {
     }
   } catch { /* ignore */ }
   return {
-    apiKey: '',
+    openaiKey: '',
+    anthropicKey: '',
     apiProvider: 'openai',
     toneStyle: 'formal',
     savedPhrases: [],
@@ -82,7 +87,8 @@ function loadData(): StoredData {
 
 export function TranslationProvider({ children }: { children: ReactNode }) {
   const initial = loadData();
-  const [apiKey, setApiKey] = useState(initial.apiKey);
+  const [openaiKey, setOpenaiKey] = useState(initial.openaiKey);
+  const [anthropicKey, setAnthropicKey] = useState(initial.anthropicKey);
   const [apiProvider, setApiProvider] = useState<'openai' | 'anthropic'>(initial.apiProvider);
   const [toneStyle, setToneStyle] = useState<ToneStyle>(initial.toneStyle);
   const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>(initial.savedPhrases);
@@ -90,9 +96,9 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    const data: StoredData = { apiKey, apiProvider, toneStyle, savedPhrases, history };
+    const data: StoredData = { openaiKey, anthropicKey, apiProvider, toneStyle, savedPhrases, history };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [apiKey, apiProvider, toneStyle, savedPhrases, history]);
+  }, [openaiKey, anthropicKey, apiProvider, toneStyle, savedPhrases, history]);
 
   const addSavedPhrase = (phrase: Omit<SavedPhrase, 'id' | 'createdAt'>) => {
     setSavedPhrases(prev => [{ ...phrase, id: uuidv4(), createdAt: new Date().toISOString() }, ...prev]);
@@ -129,8 +135,9 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
   };
 
   const translate = async (text: string, direction: 'ko-en' | 'en-ko', context?: string): Promise<string> => {
+    const apiKey = apiProvider === 'openai' ? openaiKey : anthropicKey;
     if (!apiKey) {
-      throw new Error('API 키를 설정해주세요. (설정 탭에서 입력)');
+      throw new Error(`${apiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API 키를 설정해주세요. (설정 탭에서 입력)`);
     }
 
     setIsTranslating(true);
@@ -173,56 +180,49 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
 번역만 출력하세요. 설명이나 추가 텍스트는 포함하지 마세요.`;
 
       let result: string;
+      let apiBody: Record<string, unknown>;
 
       if (apiProvider === 'openai') {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `${directionPrompt}\n\n${text}` },
-            ],
-            temperature: 0.3,
-          }),
-        });
+        apiBody = {
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `${directionPrompt}\n\n${text}` },
+          ],
+          temperature: 0.3,
+        };
+      } else {
+        apiBody = {
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [
+            { role: 'user', content: `${directionPrompt}\n\n${text}` },
+          ],
+        };
+      }
 
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.error?.message || `API 오류: ${response.status}`);
-        }
+      // Call through server proxy to avoid CORS issues
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: apiProvider,
+          apiKey,
+          body: apiBody,
+        }),
+      });
 
-        const data = await response.json();
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API 오류: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (apiProvider === 'openai') {
         result = data.choices[0].message.content.trim();
       } else {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 4096,
-            system: systemPrompt,
-            messages: [
-              { role: 'user', content: `${directionPrompt}\n\n${text}` },
-            ],
-          }),
-        });
-
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.error?.message || `API 오류: ${response.status}`);
-        }
-
-        const data = await response.json();
         result = data.content[0].text.trim();
       }
 
@@ -235,7 +235,7 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
 
   return (
     <TranslationContext.Provider value={{
-      apiKey, setApiKey, apiProvider, setApiProvider,
+      openaiKey, setOpenaiKey, anthropicKey, setAnthropicKey, apiProvider, setApiProvider,
       toneStyle, setToneStyle,
       savedPhrases, addSavedPhrase, deleteSavedPhrase,
       history, addHistory, clearHistory,
