@@ -72,6 +72,9 @@ export default function Layout() {
           <NavLink to="/projects" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             프로젝트 목록
           </NavLink>
+          <NavLink to="/translate" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            번역
+          </NavLink>
           <div className="nav-share-group">
             <button className="btn btn-sm btn-secondary" onClick={handleCopyLink} title="공유 링크 복사">
               공유 링크

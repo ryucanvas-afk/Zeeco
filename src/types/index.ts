@@ -149,3 +149,20 @@ export interface FactoryPurchase {
   currency: string;
   notes: string;
 }
+
+// Translation Tool Types
+export interface SavedPhrase {
+  id: string;
+  korean: string;
+  english: string;
+  category: string;
+  createdAt: string;
+}
+
+export interface TranslationHistory {
+  id: string;
+  source: string;
+  result: string;
+  direction: 'ko-en' | 'en-ko';
+  timestamp: string;
+}
