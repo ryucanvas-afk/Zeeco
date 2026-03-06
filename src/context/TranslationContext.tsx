@@ -18,6 +18,7 @@ BMS=Burner Management System, 화염 감지기=Flame Detector, 점화기=Ignitor
 배기가스=Flue Gas/Exhaust Gas, 과잉공기=Excess Air`;
 
 export type ToneStyle = 'formal' | 'casual';
+export type ModelTier = 'quality' | 'economy';
 
 interface TranslationContextType {
   // API Keys (separate per provider)
@@ -27,6 +28,10 @@ interface TranslationContextType {
   setAnthropicKey: (key: string) => void;
   apiProvider: 'openai' | 'anthropic';
   setApiProvider: (provider: 'openai' | 'anthropic') => void;
+
+  // Model tier
+  modelTier: ModelTier;
+  setModelTier: (tier: ModelTier) => void;
 
   // Tone
   toneStyle: ToneStyle;
@@ -55,6 +60,7 @@ interface StoredData {
   openaiKey: string;
   anthropicKey: string;
   apiProvider: 'openai' | 'anthropic';
+  modelTier: ModelTier;
   toneStyle: ToneStyle;
   savedPhrases: SavedPhrase[];
   history: TranslationHistory[];
@@ -68,7 +74,8 @@ function loadData(): StoredData {
       return {
         openaiKey: data.openaiKey || data.apiKey || '',
         anthropicKey: data.anthropicKey || '',
-        apiProvider: data.apiProvider || 'openai',
+        apiProvider: data.apiProvider || 'anthropic',
+        modelTier: data.modelTier || 'quality',
         toneStyle: data.toneStyle || 'formal',
         savedPhrases: data.savedPhrases || [],
         history: data.history || [],
@@ -78,7 +85,8 @@ function loadData(): StoredData {
   return {
     openaiKey: '',
     anthropicKey: '',
-    apiProvider: 'openai',
+    apiProvider: 'anthropic',
+    modelTier: 'quality',
     toneStyle: 'formal',
     savedPhrases: [],
     history: [],
@@ -90,15 +98,16 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
   const [openaiKey, setOpenaiKey] = useState(initial.openaiKey);
   const [anthropicKey, setAnthropicKey] = useState(initial.anthropicKey);
   const [apiProvider, setApiProvider] = useState<'openai' | 'anthropic'>(initial.apiProvider);
+  const [modelTier, setModelTier] = useState<ModelTier>(initial.modelTier);
   const [toneStyle, setToneStyle] = useState<ToneStyle>(initial.toneStyle);
   const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>(initial.savedPhrases);
   const [history, setHistory] = useState<TranslationHistory[]>(initial.history);
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    const data: StoredData = { openaiKey, anthropicKey, apiProvider, toneStyle, savedPhrases, history };
+    const data: StoredData = { openaiKey, anthropicKey, apiProvider, modelTier, toneStyle, savedPhrases, history };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [openaiKey, anthropicKey, apiProvider, toneStyle, savedPhrases, history]);
+  }, [openaiKey, anthropicKey, apiProvider, modelTier, toneStyle, savedPhrases, history]);
 
   const addSavedPhrase = (phrase: Omit<SavedPhrase, 'id' | 'createdAt'>) => {
     setSavedPhrases(prev => [{ ...phrase, id: uuidv4(), createdAt: new Date().toISOString() }, ...prev]);
@@ -169,7 +178,26 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
 - "확인 부탁해요", "참고해주세요", "감사해요" 등의 부드러운 표현을 사용하세요.
 - Teams, Slack 같은 메신저에서 동료에게 보내는 톤입니다.`);
 
-      const systemPrompt = `당신은 Zeeco Korea (버너/연소 장비 전문 회사)의 프로젝트 엔지니어를 위한 전문 번역가입니다.
+      const systemPrompt = `당신은 Zeeco Korea (버너/연소 장비 전문 회사)에서 10년 이상 근무한 시니어 프로젝트 엔지니어입니다.
+미국 본사, 해외 파트너, 한국 고객사와 매일 이메일과 메시지를 주고받는 실무자로서 번역합니다.
+
+핵심 원칙:
+1. 절대 직역하지 마세요. "이 사람이 실제로 전달하려는 메시지가 뭔가?"를 먼저 파악한 후, 받는 사람 입장에서 자연스러운 문장으로 작성하세요.
+2. 엔지니어링/프로젝트 관리 맥락을 반드시 반영하세요. 도면 리비전, 납기, 검수, 발주, 시운전 등의 업무 흐름을 이해하고 있습니다.
+3. 원문에 없더라도 비즈니스 관례상 당연한 인사, 연결어, 마무리 표현을 자연스럽게 추가하세요.
+4. 한국어→영어: 한국어는 주어/목적어를 생략하고 함축적으로 표현하는 경향이 있습니다. 영어로 번역할 때는 생략된 주어를 복원하고, 맥락을 명확하게 풀어쓰세요.
+5. 영어→한국어: 영어의 장황한 수식어와 관계절을 한국 비즈니스 문화에 맞게 간결하게 다듬으세요. 한국어답게 끊어서 작성하세요.
+
+<예시 - 이렇게 번역하세요>
+[한→영 나쁜 예] "도면 리비전 확인 부탁드립니다" → "Please check the drawing revision." (직역, 맥락 없음)
+[한→영 좋은 예] "도면 리비전 확인 부탁드립니다" → "Could you please review the latest drawing revision and confirm if it's acceptable? We'd like to proceed with fabrication once approved."
+
+[영→한 나쁜 예] "We need to expedite the delivery schedule due to the client's revised timeline." → "우리는 고객의 수정된 일정으로 인해 납품 일정을 앞당길 필요가 있습니다." (어색한 직역)
+[영→한 좋은 예] "We need to expedite the delivery schedule due to the client's revised timeline." → "고객사 일정이 변경되어 납기를 앞당겨야 할 것 같습니다."
+
+[한→영 나쁜 예] "내일까지 보내주세요" → "Please send it by tomorrow." (맥락 부족)
+[한→영 좋은 예] "내일까지 보내주세요" → "Could you please send it over by tomorrow? We need to finalize the package before the deadline."
+</예시>
 
 ${GLOSSARY_CONTEXT}
 
@@ -177,23 +205,26 @@ ${toneGuide}${styleExamples}
 
 ${context ? `추가 컨텍스트: ${context}` : ''}
 
-번역만 출력하세요. 설명이나 추가 텍스트는 포함하지 마세요.`;
+번역만 출력하세요. 설명, 대안, 메모 등 추가 텍스트는 절대 포함하지 마세요.`;
 
       let result: string;
       let apiBody: Record<string, unknown>;
 
+      const openaiModel = modelTier === 'quality' ? 'gpt-4o' : 'gpt-4o-mini';
+      const anthropicModel = modelTier === 'quality' ? 'claude-sonnet-4-5-20250929' : 'claude-haiku-4-5-20251001';
+
       if (apiProvider === 'openai') {
         apiBody = {
-          model: 'gpt-4o-mini',
+          model: openaiModel,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: `${directionPrompt}\n\n${text}` },
           ],
-          temperature: 0.3,
+          temperature: 0.4,
         };
       } else {
         apiBody = {
-          model: 'claude-haiku-4-5-20251001',
+          model: anthropicModel,
           max_tokens: 4096,
           system: systemPrompt,
           messages: [
@@ -202,62 +233,59 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
         };
       }
 
-      // Try server proxy first, fallback to direct API call
+      // Direct API call (works on GitHub Pages / external access)
+      let directUrl: string;
+      let directHeaders: Record<string, string>;
+
+      if (apiProvider === 'openai') {
+        directUrl = 'https://api.openai.com/v1/chat/completions';
+        directHeaders = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        };
+      } else {
+        directUrl = 'https://api.anthropic.com/v1/messages';
+        directHeaders = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        };
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let data: any;
 
       try {
-        const proxyRes = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: apiProvider, apiKey, body: apiBody }),
-        });
-        if (proxyRes.ok) {
-          data = await proxyRes.json();
-        } else if (proxyRes.status === 404 || proxyRes.status === 405) {
-          throw new Error('proxy unavailable');
-        } else {
-          const err = await proxyRes.json().catch(() => ({}));
-          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${proxyRes.status}`);
-        }
-      } catch (proxyErr) {
-        // Proxy unavailable (GitHub Pages etc.) - call API directly
-        const errMsg = proxyErr instanceof Error ? proxyErr.message : '';
-        if (errMsg !== 'proxy unavailable' && !errMsg.includes('Failed to fetch')) {
-          throw proxyErr;
-        }
-
-        let directUrl: string;
-        let directHeaders: Record<string, string>;
-
-        if (apiProvider === 'openai') {
-          directUrl = 'https://api.openai.com/v1/chat/completions';
-          directHeaders = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          };
-        } else {
-          directUrl = 'https://api.anthropic.com/v1/messages';
-          directHeaders = {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          };
-        }
-
-        const directRes = await fetch(directUrl, {
+        const res = await fetch(directUrl, {
           method: 'POST',
           headers: directHeaders,
           body: JSON.stringify(apiBody),
         });
 
-        if (!directRes.ok) {
-          const err = await directRes.json().catch(() => ({}));
-          throw new Error((err as { error?: { message?: string } }).error?.message || `API 오류: ${directRes.status}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `API 오류: ${res.status}`);
+        }
+        data = await res.json();
+      } catch (directErr) {
+        // Direct call failed (CORS etc.) - try server proxy as fallback
+        const errMsg = directErr instanceof Error ? directErr.message : '';
+        if (!errMsg.includes('Failed to fetch') && !errMsg.includes('NetworkError')) {
+          throw directErr;
         }
 
-        data = await directRes.json();
+        const proxyRes = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: apiProvider, apiKey, body: apiBody }),
+        });
+
+        if (!proxyRes.ok) {
+          const err = await proxyRes.json().catch(() => ({}));
+          throw new Error(err.error?.message || `API 오류: ${proxyRes.status}`);
+        }
+        data = await proxyRes.json();
       }
 
       if (apiProvider === 'openai') {
@@ -276,7 +304,7 @@ ${context ? `추가 컨텍스트: ${context}` : ''}
   return (
     <TranslationContext.Provider value={{
       openaiKey, setOpenaiKey, anthropicKey, setAnthropicKey, apiProvider, setApiProvider,
-      toneStyle, setToneStyle,
+      modelTier, setModelTier, toneStyle, setToneStyle,
       savedPhrases, addSavedPhrase, deleteSavedPhrase,
       history, addHistory, clearHistory,
       translate, isTranslating,

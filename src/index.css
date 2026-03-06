@@ -2377,12 +2377,21 @@ body {
   margin-top: 16px;
 }
 
+/* Selector row */
+.selector-row {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 /* Tone selector */
 .tone-selector {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .tone-label {
