@@ -5,12 +5,15 @@ type TabType = 'translate' | 'phrases' | 'history' | 'settings';
 
 export default function Translation() {
   const {
-    apiKey, setApiKey, apiProvider, setApiProvider,
+    openaiKey, setOpenaiKey, anthropicKey, setAnthropicKey,
+    apiProvider, setApiProvider,
     toneStyle, setToneStyle,
     savedPhrases, addSavedPhrase, deleteSavedPhrase,
     history, clearHistory,
     translate, isTranslating,
   } = useTranslation();
+
+  const hasApiKey = apiProvider === 'openai' ? !!openaiKey : !!anthropicKey;
 
   const [activeTab, setActiveTab] = useState<TabType>('translate');
   const [direction, setDirection] = useState<'ko-en' | 'en-ko'>('ko-en');
@@ -197,12 +200,12 @@ export default function Translation() {
             <button
               className="btn btn-primary btn-translate"
               onClick={handleTranslate}
-              disabled={isTranslating || !sourceText.trim() || !apiKey}
+              disabled={isTranslating || !sourceText.trim() || !hasApiKey}
             >
               {isTranslating ? '번역 중...' : '번역하기'}
               {!isTranslating && <span className="btn-shortcut">Ctrl+Enter</span>}
             </button>
-            {!apiKey && (
+            {!hasApiKey && (
               <span className="api-warning">설정 탭에서 API 키를 먼저 입력하세요</span>
             )}
           </div>
@@ -405,40 +408,50 @@ export default function Translation() {
           <div className="settings-card">
             <h3>API 설정</h3>
             <p className="settings-desc">
-              번역에 사용할 AI API를 설정합니다. API 키는 브라우저에만 저장되며 외부로 전송되지 않습니다.
+              번역에 사용할 AI API를 설정합니다. API 키는 브라우저에만 저장됩니다.
             </p>
 
             <div className="form-group">
-              <label>API 제공자</label>
+              <label>사용할 AI 선택</label>
               <div className="provider-toggle">
                 <button
                   className={`provider-btn ${apiProvider === 'openai' ? 'active' : ''}`}
                   onClick={() => setApiProvider('openai')}
                 >
                   OpenAI (GPT-4o-mini)
+                  {openaiKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
                 <button
                   className={`provider-btn ${apiProvider === 'anthropic' ? 'active' : ''}`}
                   onClick={() => setApiProvider('anthropic')}
                 >
                   Anthropic (Claude)
+                  {anthropicKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>API Key</label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                placeholder={apiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-              />
-              <span className="form-hint">
-                {apiProvider === 'openai'
-                  ? 'platform.openai.com 에서 API 키를 발급받으세요.'
-                  : 'console.anthropic.com 에서 API 키를 발급받으세요.'}
-              </span>
+            <div className="api-keys-section">
+              <div className="form-group">
+                <label>OpenAI API Key</label>
+                <input
+                  type="password"
+                  value={openaiKey}
+                  onChange={e => setOpenaiKey(e.target.value)}
+                  placeholder="sk-proj-..."
+                />
+                <span className="form-hint">platform.openai.com 에서 발급</span>
+              </div>
+              <div className="form-group">
+                <label>Anthropic API Key</label>
+                <input
+                  type="password"
+                  value={anthropicKey}
+                  onChange={e => setAnthropicKey(e.target.value)}
+                  placeholder="sk-ant-..."
+                />
+                <span className="form-hint">console.anthropic.com 에서 발급</span>
+              </div>
             </div>
           </div>
 
