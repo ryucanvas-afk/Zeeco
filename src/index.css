@@ -1408,6 +1408,55 @@ body {
   gap: 8px;
 }
 
+/* 2-column label-value layout for purchase cards */
+.purchase-card-grid-2col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.pc-row:last-child {
+  border-bottom: none;
+}
+
+.pc-row-full {
+  grid-template-columns: 1fr;
+}
+
+.pc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.pc-field:first-child {
+  border-right: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.pc-row-full .pc-field:first-child {
+  border-right: none;
+}
+
+.pc-field-full {
+  grid-column: 1 / -1;
+  border-right: none !important;
+}
+
+.pc-field label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
 .purchase-field {
   display: flex;
   flex-direction: column;
@@ -1416,6 +1465,135 @@ body {
 
 .purchase-field.full-width {
   grid-column: 1 / -1;
+}
+
+/* Item color dot & picker in item list */
+.item-color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.item-color-dot:hover {
+  transform: scale(1.2);
+  border-color: white;
+}
+
+.item-color-picker {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Item purchase summary in item list */
+.item-purchase-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.item-purchase-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.item-purchase-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.item-purchase-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Item PO cards in detail panel */
+.item-purchase-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.item-po-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #3b82f6;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.item-po-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.item-po-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  font-family: 'SF Mono', monospace;
+}
+
+.item-po-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.item-po-body {
+  padding: 0;
+}
+
+.item-po-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.item-po-row:last-child {
+  border-bottom: none;
+}
+
+.item-po-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+}
+
+.item-po-field:first-child {
+  border-right: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.item-po-field label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.item-po-field span {
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 .scope-list {

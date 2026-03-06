@@ -69,6 +69,7 @@ export interface ProjectItem {
   id: string;
   projectId: string;
   name: string;
+  color: string;
   supplier: string;
   requiredDeliveryDate: string;
   requiredDeliveryTBD: boolean;

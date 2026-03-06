@@ -6,7 +6,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
+
+const ITEM_COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
+  '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4',
+];
 const VERSION_KEY = 'zeeco-schema-version';
 
 // Migrate old data to new schema instead of resetting
@@ -50,10 +55,11 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
       notes: (ins.notes as string) || '',
     })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
-    items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>) => ({
+    items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
       projectId: (i.projectId as string) || (p.id as string) || '',
       name: (i.name as string) || '',
+      color: (i.color as string) || ITEM_COLORS[idx % ITEM_COLORS.length],
       supplier: (i.supplier as string) || '',
       requiredDeliveryDate: (i.requiredDeliveryDate as string) || '',
       requiredDeliveryTBD: (i.requiredDeliveryTBD as boolean) || false,
@@ -181,9 +187,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const addItem = (projectId: string, item: Omit<ProjectItem, 'id' | 'projectId' | 'schedules' | 'purchases' | 'subItems'>) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
+      const color = item.color || ITEM_COLORS[p.items.length % ITEM_COLORS.length];
       return {
         ...p,
-        items: [...p.items, { ...item, id: uuidv4(), projectId, schedules: [], purchases: [], subItems: [] }],
+        items: [...p.items, { ...item, color, id: uuidv4(), projectId, schedules: [], purchases: [], subItems: [] }],
       };
     }));
   };

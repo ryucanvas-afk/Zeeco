@@ -71,7 +71,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const dragOverRef = useRef<string | null>(null);
 
   const allPurchases = project.items.flatMap(item =>
-    item.purchases.map(p => ({ ...p, itemName: item.name, parentItemId: item.id }))
+    item.purchases.map(p => ({ ...p, itemName: item.name, parentItemId: item.id, itemColor: item.color || '#3b82f6' }))
   ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   const statusSummary = {
@@ -122,11 +122,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
 
-    // Update sortOrder for all purchases per item
-    const itemPurchaseMap: Record<string, string[]> = {};
     reordered.forEach((p, idx) => {
-      if (!itemPurchaseMap[p.parentItemId]) itemPurchaseMap[p.parentItemId] = [];
-      itemPurchaseMap[p.parentItemId].push(p.id);
       updatePurchase(project.id, p.parentItemId, p.id, { sortOrder: idx });
     });
 
@@ -283,6 +279,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
             <div
               key={purchase.id}
               className={`purchase-card ${purchase.status === 'delivered' ? 'purchase-card-done' : ''} ${dragId === purchase.id ? 'purchase-card-dragging' : ''}`}
+              style={{ borderLeft: `4px solid ${purchase.itemColor}` }}
               draggable
               onDragStart={() => handleDragStart(purchase.id)}
               onDragOver={e => handleDragOver(e, purchase.id)}
@@ -318,126 +315,110 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                   </span>
                 </div>
 
-                <div className="purchase-card-grid">
-                  <div className="purchase-field">
-                    <label>품목</label>
-                    <EditableCell
-                      value={purchase.parentItemId}
-                      type="select"
-                      options={itemOptions(project)}
-                      onSave={v => {
-                        // Move purchase to new item
-                        if (v !== purchase.parentItemId) {
-                          const purchaseData = { ...purchase };
-                          delete (purchaseData as Record<string, unknown>)['itemName'];
-                          delete (purchaseData as Record<string, unknown>)['parentItemId'];
-                          deletePurchase(project.id, purchase.parentItemId, purchase.id);
-                          addPurchase(project.id, v, {
-                            orderNumber: purchaseData.orderNumber,
-                            partName: purchaseData.partName,
-                            specification: purchaseData.specification,
-                            quantity: purchaseData.quantity,
-                            unit: purchaseData.unit,
-                            supplier: purchaseData.supplier,
-                            team: purchaseData.team,
-                            orderDate: purchaseData.orderDate,
-                            expectedDelivery: purchaseData.expectedDelivery,
-                            actualDelivery: purchaseData.actualDelivery,
-                            status: purchaseData.status as PurchaseStatus,
-                            orderAmount: purchaseData.orderAmount,
-                            vat: purchaseData.vat,
-                            currency: purchaseData.currency,
-                            termsOfPayment: purchaseData.termsOfPayment,
-                            scopeOfSupply: purchaseData.scopeOfSupply,
-                            notes: purchaseData.notes,
-                            sortOrder: purchaseData.sortOrder,
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="purchase-field">
-                    <label>공급업체</label>
-                    <EditableCell value={purchase.supplier} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'supplier', v)} placeholder="-" />
-                  </div>
-                  <div className="purchase-field">
-                    <label>담당 팀</label>
-                    <EditableCell value={purchase.team || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'team', v)} placeholder="-" />
-                  </div>
-                  <div className="purchase-field">
-                    <label>수량</label>
-                    <span>
-                      <EditableCell value={String(purchase.quantity)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'quantity', Number(v))} />
-                    </span>
-                  </div>
-                  <div className="purchase-field">
-                    <label>단위</label>
-                    <EditableCell value={purchase.unit} type="select" options={unitOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'unit', v)} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>통화</label>
-                    <EditableCell value={purchase.currency} type="select" options={currencyOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'currency', v)} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>발주 금액</label>
-                    <span className="td-cost">{formatNumber(purchase.orderAmount || 0)} {purchase.currency}</span>
-                    <EditableCell value={String(purchase.orderAmount || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderAmount', Number(v))} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>VAT</label>
-                    <span className="td-cost">{formatNumber(purchase.vat || 0)} {purchase.currency}</span>
-                    <EditableCell value={String(purchase.vat || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'vat', Number(v))} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>발주일</label>
-                    <EditableCell value={purchase.orderDate} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderDate', v)} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>납기 예정 (Delivery Schedule)</label>
-                    <EditableCell value={purchase.expectedDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'expectedDelivery', v)} />
-                  </div>
-                  <div className="purchase-field">
-                    <label>입고일</label>
-                    <EditableCell value={purchase.actualDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'actualDelivery', v)} />
-                  </div>
-                  <div className="purchase-field full-width">
-                    <label>Terms of Payment</label>
-                    <EditableCell value={purchase.termsOfPayment || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'termsOfPayment', v)} placeholder="-" />
-                  </div>
-                  <div className="purchase-field full-width">
-                    <label>Scope of Supply</label>
-                    <div className="scope-list">
-                      {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).map((item, idx) => (
-                        <div key={idx} className="scope-list-item">
-                          <span className="scope-number">{idx + 1}.</span>
-                          <EditableCell
-                            value={item}
-                            onSave={v => {
-                              const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
-                              current[idx] = v;
-                              updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
-                            }}
-                            placeholder={`항목 ${idx + 1}`}
-                          />
-                          {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).length > 1 && (
-                            <button className="btn-icon btn-danger" onClick={() => {
-                              const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
-                              current.splice(idx, 1);
-                              updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
-                            }}>✕</button>
-                          )}
-                        </div>
-                      ))}
-                      <button className="btn btn-sm btn-secondary" onClick={() => {
-                        const current = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
-                        current.push('');
-                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: current });
-                      }}>+ 항목 추가</button>
+                <div className="purchase-card-grid-2col">
+                  <div className="pc-row">
+                    <div className="pc-field"><label>품목</label>
+                      <EditableCell value={purchase.parentItemId} type="select" options={itemOptions(project)}
+                        onSave={v => {
+                          if (v !== purchase.parentItemId) {
+                            const pd = { ...purchase };
+                            delete (pd as Record<string, unknown>)['itemName'];
+                            delete (pd as Record<string, unknown>)['parentItemId'];
+                            delete (pd as Record<string, unknown>)['itemColor'];
+                            deletePurchase(project.id, purchase.parentItemId, purchase.id);
+                            addPurchase(project.id, v, {
+                              orderNumber: pd.orderNumber, partName: pd.partName, specification: pd.specification,
+                              quantity: pd.quantity, unit: pd.unit, supplier: pd.supplier, team: pd.team,
+                              orderDate: pd.orderDate, expectedDelivery: pd.expectedDelivery, actualDelivery: pd.actualDelivery,
+                              status: pd.status as PurchaseStatus, orderAmount: pd.orderAmount, vat: pd.vat,
+                              currency: pd.currency, termsOfPayment: pd.termsOfPayment, scopeOfSupply: pd.scopeOfSupply,
+                              notes: pd.notes, sortOrder: pd.sortOrder,
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="pc-field"><label>공급업체</label>
+                      <EditableCell value={purchase.supplier} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'supplier', v)} placeholder="-" />
                     </div>
                   </div>
-                  <div className="purchase-field full-width">
-                    <label>비고</label>
-                    <EditableCell value={purchase.notes} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'notes', v)} placeholder="메모" />
+                  <div className="pc-row">
+                    <div className="pc-field"><label>담당 팀</label>
+                      <EditableCell value={purchase.team || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'team', v)} placeholder="-" />
+                    </div>
+                    <div className="pc-field"><label>수량</label>
+                      <EditableCell value={String(purchase.quantity)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'quantity', Number(v))} />
+                    </div>
+                  </div>
+                  <div className="pc-row">
+                    <div className="pc-field"><label>단위</label>
+                      <EditableCell value={purchase.unit} type="select" options={unitOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'unit', v)} />
+                    </div>
+                    <div className="pc-field"><label>통화</label>
+                      <EditableCell value={purchase.currency} type="select" options={currencyOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'currency', v)} />
+                    </div>
+                  </div>
+                  <div className="pc-row">
+                    <div className="pc-field"><label>발주 금액</label>
+                      <span className="td-cost">{formatNumber(purchase.orderAmount || 0)} {purchase.currency}</span>
+                      <EditableCell value={String(purchase.orderAmount || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderAmount', Number(v))} />
+                    </div>
+                    <div className="pc-field"><label>VAT</label>
+                      <span className="td-cost">{formatNumber(purchase.vat || 0)} {purchase.currency}</span>
+                      <EditableCell value={String(purchase.vat || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'vat', Number(v))} />
+                    </div>
+                  </div>
+                  <div className="pc-row">
+                    <div className="pc-field"><label>발주일</label>
+                      <EditableCell value={purchase.orderDate} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderDate', v)} />
+                    </div>
+                    <div className="pc-field"><label>납기 예정</label>
+                      <EditableCell value={purchase.expectedDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'expectedDelivery', v)} />
+                    </div>
+                  </div>
+                  <div className="pc-row">
+                    <div className="pc-field"><label>입고일</label>
+                      <EditableCell value={purchase.actualDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'actualDelivery', v)} />
+                    </div>
+                    <div className="pc-field"></div>
+                  </div>
+                  <div className="pc-row pc-row-full">
+                    <div className="pc-field pc-field-full"><label>Terms of Payment</label>
+                      <EditableCell value={purchase.termsOfPayment || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'termsOfPayment', v)} placeholder="-" />
+                    </div>
+                  </div>
+                  <div className="pc-row pc-row-full">
+                    <div className="pc-field pc-field-full"><label>Scope of Supply</label>
+                      <div className="scope-list">
+                        {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).map((item, idx) => (
+                          <div key={idx} className="scope-list-item">
+                            <span className="scope-number">{idx + 1}.</span>
+                            <EditableCell value={item} onSave={v => {
+                              const cur = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                              cur[idx] = v;
+                              updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: cur });
+                            }} placeholder={`항목 ${idx + 1}`} />
+                            {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).length > 1 && (
+                              <button className="btn-icon btn-danger" onClick={() => {
+                                const cur = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                                cur.splice(idx, 1);
+                                updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: cur });
+                              }}>✕</button>
+                            )}
+                          </div>
+                        ))}
+                        <button className="btn btn-sm btn-secondary" onClick={() => {
+                          const cur = Array.isArray(purchase.scopeOfSupply) ? [...purchase.scopeOfSupply] : [purchase.scopeOfSupply || ''];
+                          cur.push('');
+                          updatePurchase(project.id, purchase.parentItemId, purchase.id, { scopeOfSupply: cur });
+                        }}>+ 항목 추가</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pc-row pc-row-full">
+                    <div className="pc-field pc-field-full"><label>비고</label>
+                      <EditableCell value={purchase.notes} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'notes', v)} placeholder="메모" />
+                    </div>
                   </div>
                 </div>
               </div>
