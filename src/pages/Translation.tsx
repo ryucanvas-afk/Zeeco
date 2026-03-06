@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation, type ToneStyle } from '../context/TranslationContext';
+import { useTranslation, type ToneStyle, type ModelTier } from '../context/TranslationContext';
 
 type TabType = 'translate' | 'phrases' | 'history' | 'settings';
 
@@ -7,6 +7,7 @@ export default function Translation() {
   const {
     openaiKey, setOpenaiKey, anthropicKey, setAnthropicKey,
     apiProvider, setApiProvider,
+    modelTier, setModelTier,
     toneStyle, setToneStyle,
     savedPhrases, addSavedPhrase, deleteSavedPhrase,
     history, clearHistory,
@@ -84,6 +85,11 @@ export default function Translation() {
     { value: 'casual', label: '캐주얼', desc: 'Teams, Slack 메시지용' },
   ];
 
+  const modelOptions: { value: ModelTier; label: string; desc: string }[] = [
+    { value: 'quality', label: '고품질', desc: '자연스러운 번역 (추천)' },
+    { value: 'economy', label: '경제적', desc: '빠르고 저렴한 번역' },
+  ];
+
   const tabs: { key: TabType; label: string }[] = [
     { key: 'translate', label: '번역' },
     { key: 'phrases', label: `저장 문구 (${savedPhrases.length})` },
@@ -113,20 +119,36 @@ export default function Translation() {
       {/* ===== TRANSLATE TAB ===== */}
       {activeTab === 'translate' && (
         <div className="translate-section">
-          {/* Tone selector */}
-          <div className="tone-selector">
-            <span className="tone-label">화법:</span>
-            {toneOptions.map(opt => (
-              <button
-                key={opt.value}
-                className={`tone-btn ${toneStyle === opt.value ? 'active' : ''}`}
-                onClick={() => setToneStyle(opt.value)}
-                title={opt.desc}
-              >
-                {opt.label}
-                <span className="tone-desc">{opt.desc}</span>
-              </button>
-            ))}
+          {/* Tone & Model selectors */}
+          <div className="selector-row">
+            <div className="tone-selector">
+              <span className="tone-label">화법:</span>
+              {toneOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  className={`tone-btn ${toneStyle === opt.value ? 'active' : ''}`}
+                  onClick={() => setToneStyle(opt.value)}
+                  title={opt.desc}
+                >
+                  {opt.label}
+                  <span className="tone-desc">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+            <div className="tone-selector">
+              <span className="tone-label">모델:</span>
+              {modelOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  className={`tone-btn ${modelTier === opt.value ? 'active' : ''}`}
+                  onClick={() => setModelTier(opt.value)}
+                  title={opt.desc}
+                >
+                  {opt.label}
+                  <span className="tone-desc">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Direction bar */}
@@ -418,7 +440,7 @@ export default function Translation() {
                   className={`provider-btn ${apiProvider === 'openai' ? 'active' : ''}`}
                   onClick={() => setApiProvider('openai')}
                 >
-                  OpenAI (GPT-4o-mini)
+                  OpenAI ({modelTier === 'quality' ? 'GPT-4o' : 'GPT-4o-mini'})
                   <span className="key-status" style={{ color: 'var(--accent-yellow)' }}>서버 필요</span>
                   {openaiKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
@@ -426,7 +448,7 @@ export default function Translation() {
                   className={`provider-btn ${apiProvider === 'anthropic' ? 'active' : ''}`}
                   onClick={() => setApiProvider('anthropic')}
                 >
-                  Anthropic (Claude) - 추천
+                  Anthropic ({modelTier === 'quality' ? 'Sonnet 4.5' : 'Haiku 4.5'}) - 추천
                   <span className="key-status key-set">외부 접속 가능</span>
                   {anthropicKey && <span className="key-status key-set">키 등록됨</span>}
                 </button>
