@@ -3,8 +3,11 @@ export type ItemStatus = 'not_started' | 'in_progress' | 'completed' | 'delayed'
 
 export type PurchaseStatus =
   | 'rfq_writing'
+  | 'rfq_requesting'
+  | 'price_negotiating'
   | 'internal_approval'
   | 'zoe_approval'
+  | 'po_reviewing'
   | 'po_completed'
   | 'manufacturing'
   | 'inspecting'
