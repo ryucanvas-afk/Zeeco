@@ -180,6 +180,7 @@ export interface BudgetItem {
   remark: string;
   quoteStatus: BudgetQuoteStatus;
   sortOrder: number;
+  groupId: string;
 }
 
 // Todo List Types
