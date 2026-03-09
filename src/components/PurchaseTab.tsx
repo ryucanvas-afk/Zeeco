@@ -69,10 +69,15 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const [formData, setFormData] = useState(emptyPurchase);
   const [dragId, setDragId] = useState<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'in_progress' | 'delivered'>('in_progress');
 
   const allPurchases = project.items.flatMap(item =>
     item.purchases.map(p => ({ ...p, itemName: item.name, parentItemId: item.id, itemColor: item.color || '#3b82f6' }))
   ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  const inProgressPurchases = allPurchases.filter(p => p.status !== 'delivered');
+  const deliveredPurchases = allPurchases.filter(p => p.status === 'delivered');
+  const displayedPurchases = activeSubTab === 'in_progress' ? inProgressPurchases : deliveredPurchases;
 
   const statusSummary = {
     rfq: allPurchases.filter(p => p.status === 'rfq_writing').length,
@@ -271,14 +276,31 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
           </form>
         )}
 
+        {/* Sub-tab toggle */}
+        <div className="purchase-sub-tabs">
+          <button
+            className={`purchase-sub-tab ${activeSubTab === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('in_progress')}
+          >
+            진행 중<span className="tab-count">{inProgressPurchases.length}</span>
+          </button>
+          <button
+            className={`purchase-sub-tab ${activeSubTab === 'delivered' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('delivered')}
+          >
+            납품 완료<span className="tab-count">{deliveredPurchases.length}</span>
+          </button>
+        </div>
+
         <p className="edit-hint">카드를 클릭하여 직접 수정 / 드래그로 순서 변경 가능</p>
 
         {/* Purchase Cards */}
         <div className="purchase-cards">
-          {allPurchases.map(purchase => (
+          {displayedPurchases.map(purchase => (
             <div
               key={purchase.id}
-              className={`purchase-card ${purchase.status === 'delivered' ? 'purchase-card-done' : ''} ${dragId === purchase.id ? 'purchase-card-dragging' : ''}`}
+              className={`purchase-card ${dragId === purchase.id ? 'purchase-card-dragging' : ''}`}
+              data-status={purchase.status}
               style={{ borderLeft: `4px solid ${purchase.itemColor}` }}
               draggable
               onDragStart={() => handleDragStart(purchase.id)}
@@ -424,8 +446,8 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
               </div>
             </div>
           ))}
-          {allPurchases.length === 0 && (
-            <p className="empty-message">등록된 발주가 없습니다.</p>
+          {displayedPurchases.length === 0 && (
+            <p className="empty-message">{activeSubTab === 'in_progress' ? '진행 중인 발주가 없습니다.' : '납품 완료된 발주가 없습니다.'}</p>
           )}
         </div>
       </div>
