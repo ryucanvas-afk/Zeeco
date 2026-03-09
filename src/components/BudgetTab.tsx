@@ -258,6 +258,17 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     }
   };
 
+  // Compute group-level aggregated values for merged display
+  const getGroupTotals = useCallback((groupId: string) => {
+    const groupItems = budgetItems.filter(i => i.groupId === groupId);
+    const totalQuotation = groupItems.reduce((s, i) => s + i.quotationPrice, 0);
+    const totalRevised = groupItems.reduce((s, i) => s + i.revisedBudget, 0);
+    const totalOrigKRW = groupItems.reduce((s, i) => s + (i.originalBudgetKRW || i.originalBudgetUSD * exchangeRate), 0);
+    const execRate = totalRevised > 0 ? totalQuotation / totalRevised : 0;
+    const amtChange = totalOrigKRW - totalRevised;
+    return { totalQuotation, totalRevised, execRate, amtChange, totalOrigKRW };
+  }, [budgetItems, exchangeRate]);
+
   const renderRow = (item: BudgetItem, part: BudgetPart, groupInfo: Record<string, { isFirst: boolean; span: number }>) => {
     const origKRW = item.originalBudgetKRW || calcOriginalKRW(item);
     const execRate = calcExecutionRate(item);
@@ -272,10 +283,16 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
     const isSelected = selectedIds.has(item.id);
 
+    // For merged groups, use group totals for display
+    const groupTotals = inGroup ? getGroupTotals(item.groupId) : null;
+    const displayExecRate = inGroup && isGroupFirst ? (groupTotals?.execRate ?? 0) : execRate;
+    const displayAmtChange = inGroup && isGroupFirst ? (groupTotals?.amtChange ?? 0) : amtChange;
+
     // Execution rate color: 90% threshold
+    const rateForColor = inGroup && isGroupFirst ? displayExecRate : execRate;
     const execRateClass = isEngOrCost ? 'budget-cell-dash' :
-      execRate >= 0.9 ? 'budget-exec-over' :
-      execRate > 0 ? 'budget-exec-under' : '';
+      rateForColor >= 0.9 ? 'budget-exec-over' :
+      rateForColor > 0 ? 'budget-exec-under' : '';
 
     return (
       <tr
@@ -307,23 +324,29 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           }} placeholder="-" />
         </td>
         <td className="budget-cell budget-cell-num budget-cell-auto">{item.originalBudgetUSD > 0 ? fmt(origKRW) : '-'}</td>
-        {/* Merged columns: 견적가, 견적업체 */}
+        {/* Merged columns: 견적가, 수정예산, 실행율, 금액증감, 견적업체 */}
         {!skipMergedCells && (
           <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
             <EditableCell value={String(item.quotationPrice || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { quotationPrice: Number(v) || 0 })} placeholder="-" />
           </td>
         )}
-        <td className="budget-cell budget-cell-num">
-          <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
-        </td>
-        <td className={`budget-cell budget-cell-num budget-exec-rate ${execRateClass}`}>
-          {isEngOrCost ? '-' : fmtRate(execRate)}
-        </td>
-        <td className={`budget-cell budget-cell-num budget-cell-auto ${amtChange < 0 ? 'budget-cell-negative' : amtChange > 0 ? 'budget-cell-positive' : ''}`}>
-          {item.revisedBudget > 0 || origKRW > 0 ? fmt(amtChange) : '-'}
-        </td>
         {!skipMergedCells && (
-          <td className={`budget-cell ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+          <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+            <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-num budget-exec-rate ${execRateClass} ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+            {isEngOrCost ? '-' : fmtRate(displayExecRate)}
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-num budget-cell-auto ${inGroup ? 'budget-cell-merged' : ''} ${displayAmtChange < 0 ? 'budget-cell-negative' : displayAmtChange > 0 ? 'budget-cell-positive' : ''}`} rowSpan={inGroup ? span : undefined}>
+            {(inGroup ? (groupTotals?.totalOrigKRW ?? 0) > 0 || (groupTotals?.totalRevised ?? 0) > 0 : item.revisedBudget > 0 || origKRW > 0) ? fmt(displayAmtChange) : '-'}
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-supplier ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
             <EditableCell value={item.supplier} onSave={v => updateBudgetItem(project.id, item.id, { supplier: v })} placeholder="-" />
           </td>
         )}
