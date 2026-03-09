@@ -159,7 +159,9 @@ export default function EditableCell({
     );
   }
 
-  const displayValue = value || placeholder;
+  const displayValue = type === 'number' && value
+    ? Number(value).toLocaleString()
+    : (value || placeholder);
 
   return (
     <span
