@@ -5484,7 +5484,8 @@ body {
 /* Merged cell highlight */
 .budget-cell-merged {
   background: rgba(59, 130, 246, 0.04) !important;
-  border-left: 2px solid #3b82f6 !important;
+  border-left: none !important;
+  border-right: none !important;
   vertical-align: middle;
 }
 

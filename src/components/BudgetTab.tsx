@@ -138,13 +138,17 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     return origKRW - item.revisedBudget;
   };
 
+  // Margin Price = 수정예산 - 견적가 (예산 대비 남은 이익)
+  const calcMarginPrice = (item: BudgetItem) => item.revisedBudget - item.quotationPrice;
+
   const calcSubTotal = (items: BudgetItem[]) => {
     const origUSD = items.reduce((s, i) => s + i.originalBudgetUSD, 0);
     const origKRW = items.reduce((s, i) => s + (i.originalBudgetKRW || calcOriginalKRW(i)), 0);
     const quotation = items.reduce((s, i) => s + i.quotationPrice, 0);
     const revised = items.reduce((s, i) => s + i.revisedBudget, 0);
+    const margin = items.reduce((s, i) => s + calcMarginPrice(i), 0);
     const change = items.reduce((s, i) => s + calcAmountChange(i), 0);
-    return { origUSD, origKRW, quotation, revised, change };
+    return { origUSD, origKRW, quotation, revised, margin, change };
   };
 
   const peTotal = calcSubTotal(peItems);
@@ -154,6 +158,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     origKRW: peTotal.origKRW + icTotal.origKRW,
     quotation: peTotal.quotation + icTotal.quotation,
     revised: peTotal.revised + icTotal.revised,
+    margin: peTotal.margin + icTotal.margin,
     change: peTotal.change + icTotal.change,
   };
 
@@ -294,14 +299,14 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   };
 
   const quoteStatusOptions = [
-    { value: 'assumed', label: '가정 (PP12)' },
+    { value: 'assumed', label: '확인 필요' },
     { value: 'quoting', label: '견적 진행중' },
     { value: 'confirmed', label: '확정 (FINAL)' },
   ];
 
   const quoteStatusColor = (status: string) => {
     switch (status) {
-      case 'assumed': return '#dcfce7';
+      case 'assumed': return 'transparent';
       case 'quoting': return '#fef9c3';
       case 'confirmed': return '#dbeafe';
       default: return 'transparent';
@@ -315,8 +320,9 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     const totalRevised = groupItems.reduce((s, i) => s + i.revisedBudget, 0);
     const totalOrigKRW = groupItems.reduce((s, i) => s + (i.originalBudgetKRW || i.originalBudgetUSD * exchangeRate), 0);
     const execRate = totalRevised > 0 ? totalQuotation / totalRevised : 0;
+    const margin = totalRevised - totalQuotation;
     const amtChange = totalOrigKRW - totalRevised;
-    return { totalQuotation, totalRevised, execRate, amtChange, totalOrigKRW };
+    return { totalQuotation, totalRevised, execRate, margin, amtChange, totalOrigKRW };
   }, [budgetItems, exchangeRate]);
 
   const renderRow = (item: BudgetItem, part: BudgetPart, groupInfo: Record<string, { isFirst: boolean; span: number }>) => {
@@ -335,7 +341,9 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
     // For merged groups, use group totals for display
     const groupTotals = inGroup ? getGroupTotals(item.groupId) : null;
+    const marginPrice = calcMarginPrice(item);
     const displayExecRate = inGroup && isGroupFirst ? (groupTotals?.execRate ?? 0) : execRate;
+    const displayMargin = inGroup && isGroupFirst ? (groupTotals?.margin ?? 0) : marginPrice;
     const displayAmtChange = inGroup && isGroupFirst ? (groupTotals?.amtChange ?? 0) : amtChange;
 
     // Execution rate color: 90% threshold
@@ -430,6 +438,11 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           </td>
         )}
         {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''} ${displayMargin > 0 ? 'budget-cell-positive' : displayMargin < 0 ? 'budget-cell-negative' : ''}`} rowSpan={inGroup ? span : undefined}>
+            {isEngOrCost ? '-' : (item.revisedBudget > 0 || item.quotationPrice > 0 ? fmt(displayMargin) : '-')}
+          </td>
+        )}
+        {!skipMergedCells && (
           <td className={`budget-cell budget-cell-num budget-cell-auto ${inGroup ? 'budget-cell-merged' : ''} ${displayAmtChange < 0 ? 'budget-cell-negative' : displayAmtChange > 0 ? 'budget-cell-positive' : ''}`} rowSpan={inGroup ? span : undefined}>
             {(inGroup ? (groupTotals?.totalOrigKRW ?? 0) > 0 || (groupTotals?.totalRevised ?? 0) > 0 : item.revisedBudget > 0 || origKRW > 0) ? fmt(displayAmtChange) : '-'}
           </td>
@@ -503,6 +516,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
       <td className="budget-cell budget-cell-num">{fmt(totals.quotation)}</td>
       <td className="budget-cell budget-cell-num">{fmt(totals.revised)}</td>
       <td className="budget-cell budget-cell-num">-</td>
+      <td className={`budget-cell budget-cell-num ${totals.margin > 0 ? 'budget-cell-positive' : totals.margin < 0 ? 'budget-cell-negative' : ''}`}>{fmt(totals.margin)}</td>
       <td className={`budget-cell budget-cell-num ${totals.change < 0 ? 'budget-cell-negative' : 'budget-cell-positive'}`}>{fmt(totals.change)}</td>
       <td colSpan={8} className="budget-cell"></td>
     </tr>
@@ -519,7 +533,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     return (
       <>
         <tr className="budget-part-header" onClick={() => togglePart(part)}>
-          <td colSpan={17} className="budget-cell">
+          <td colSpan={18} className="budget-cell">
             <span className="budget-part-toggle">{isCollapsed ? '\u25B6' : '\u25BC'}</span>
             <strong>{PART_LABELS[part]}</strong>
             <span className="budget-part-summary">({items.length}개 항목 | 수정예산: {fmt(totals.revised)} 원)</span>
@@ -530,14 +544,14 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             {regularItems.map(item => renderRow(item, part, groupInfo))}
             {engineeringItems.length > 0 && (
               <tr className="budget-category-header">
-                <td colSpan={17} className="budget-cell budget-category-label">Engineering Hours</td>
+                <td colSpan={18} className="budget-cell budget-category-label">Engineering Hours</td>
               </tr>
             )}
             {engineeringItems.map(item => renderRow(item, part, groupInfo))}
             {directCostItems.map(item => renderRow(item, part, groupInfo))}
             {contingencyItems.map(item => renderRow(item, part, groupInfo))}
             <tr className="budget-add-row">
-              <td colSpan={17} className="budget-cell">
+              <td colSpan={18} className="budget-cell">
                 <div className="budget-add-buttons">
                   <button className="budget-add-btn" onClick={() => handleAddItem(part, 'item')}>+ 품목 추가</button>
                   <button className="budget-add-btn" onClick={() => handleAddItem(part, 'engineering')}>+ Engineering</button>
@@ -654,7 +668,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
       {/* Legend */}
       <div className="budget-legend">
-        <span className="budget-legend-item" style={{ backgroundColor: '#dcfce7' }}>가정 (PP12 참고)</span>
+        <span className="budget-legend-item" style={{ backgroundColor: '#ffffff' }}>확인 필요</span>
         <span className="budget-legend-item" style={{ backgroundColor: '#fef9c3' }}>견적 &amp; Nego 진행중</span>
         <span className="budget-legend-item" style={{ backgroundColor: '#dbeafe' }}>확정 (FINAL PRICE)</span>
       </div>
@@ -677,6 +691,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
               <th className="budget-th budget-th-num">견적가</th>
               <th className="budget-th budget-th-num">수정 예산</th>
               <th className="budget-th budget-th-num">실행율 (%)</th>
+              <th className="budget-th budget-th-num">Margin Price</th>
               <th className="budget-th budget-th-num">금액 증감</th>
               <th className="budget-th">견적 업체</th>
               <th className="budget-th budget-th-sm">RFQ Issue</th>
