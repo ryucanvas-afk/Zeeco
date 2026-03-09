@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
-import type { Project, BudgetItem, BudgetPart } from '../types';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import type { Project, BudgetItem, BudgetPart, QuotationCurrency } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
 
@@ -29,7 +29,8 @@ const PART_LABELS: Record<BudgetPart, string> = { PE: 'PE PART', IC: 'I&C PART' 
 function createEmptyBudgetItem(part: BudgetPart, category: BudgetItem['category'], sortOrder: number): Omit<BudgetItem, 'id'> {
   return {
     part, category, name: '', originalBudgetUSD: 0, originalBudgetKRW: 0,
-    quotationPrice: 0, revisedBudget: 0, supplier: '', rfqDate: '', rfqIssued: false,
+    quotationPrice: 0, quotationCurrency: 'KRW', quotationOriginalPrice: 0,
+    revisedBudget: 0, supplier: '', rfqDate: '', rfqIssued: false,
     poDate: '', poIssued: false, expectedDelivery: '', requiredDelivery: '', remark: '',
     quoteStatus: 'assumed', sortOrder, groupId: '',
   };
@@ -51,7 +52,56 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const dragId = useRef<string | null>(null);
   const dragOverId = useRef<string | null>(null);
 
+  // Scrollbar sync refs
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(1400);
+
+  useEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const updateWidth = () => setTableScrollWidth(wrapper.scrollWidth);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const top = topScrollRef.current;
+    const wrapper = tableWrapperRef.current;
+    if (!top || !wrapper) return;
+    let syncing = false;
+    const onTopScroll = () => {
+      if (syncing) return;
+      syncing = true;
+      wrapper.scrollLeft = top.scrollLeft;
+      syncing = false;
+    };
+    const onWrapperScroll = () => {
+      if (syncing) return;
+      syncing = true;
+      top.scrollLeft = wrapper.scrollLeft;
+      syncing = false;
+    };
+    top.addEventListener('scroll', onTopScroll);
+    wrapper.addEventListener('scroll', onWrapperScroll);
+    return () => {
+      top.removeEventListener('scroll', onTopScroll);
+      wrapper.removeEventListener('scroll', onWrapperScroll);
+    };
+  }, []);
+
   const exchangeRate = project.exchangeRate || 1350;
+  const eurExchangeRate = project.eurExchangeRate || 1500;
+
+  const convertToKRW = useCallback((amount: number, currency: QuotationCurrency) => {
+    switch (currency) {
+      case 'USD': return Math.round(amount * exchangeRate);
+      case 'EUR': return Math.round(amount * eurExchangeRate);
+      default: return amount;
+    }
+  }, [exchangeRate, eurExchangeRate]);
   const budgetItems = useMemo(() =>
     [...(project.budgetItems || [])].sort((a, b) => a.sortOrder - b.sortOrder),
     [project.budgetItems]
@@ -326,8 +376,47 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         <td className="budget-cell budget-cell-num budget-cell-auto">{item.originalBudgetUSD > 0 ? fmt(origKRW) : '-'}</td>
         {/* Merged columns: 견적가, 수정예산, 실행율, 금액증감, 견적업체 */}
         {!skipMergedCells && (
-          <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
-            <EditableCell value={String(item.quotationPrice || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { quotationPrice: Number(v) || 0 })} placeholder="-" />
+          <td className={`budget-cell budget-cell-num budget-cell-quote ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+            <div className="budget-quote-input">
+              <select
+                className="budget-currency-select"
+                value={item.quotationCurrency || 'KRW'}
+                onChange={e => {
+                  const newCurrency = e.target.value as QuotationCurrency;
+                  const origPrice = item.quotationOriginalPrice || item.quotationPrice;
+                  // When switching currency, keep originalPrice and recalculate KRW
+                  updateBudgetItem(project.id, item.id, {
+                    quotationCurrency: newCurrency,
+                    quotationOriginalPrice: origPrice,
+                    quotationPrice: convertToKRW(origPrice, newCurrency),
+                  });
+                }}
+              >
+                <option value="KRW">₩</option>
+                <option value="USD">$</option>
+                <option value="EUR">€</option>
+              </select>
+              <EditableCell
+                value={String((item.quotationCurrency && item.quotationCurrency !== 'KRW' ? item.quotationOriginalPrice : item.quotationPrice) || '')}
+                type="number"
+                onSave={v => {
+                  const val = Number(v) || 0;
+                  const currency = item.quotationCurrency || 'KRW';
+                  if (currency === 'KRW') {
+                    updateBudgetItem(project.id, item.id, { quotationPrice: val, quotationOriginalPrice: val });
+                  } else {
+                    updateBudgetItem(project.id, item.id, {
+                      quotationOriginalPrice: val,
+                      quotationPrice: convertToKRW(val, currency),
+                    });
+                  }
+                }}
+                placeholder="-"
+              />
+            </div>
+            {item.quotationCurrency && item.quotationCurrency !== 'KRW' && item.quotationPrice > 0 && (
+              <div className="budget-converted-krw">≈ ₩{fmt(item.quotationPrice)}</div>
+            )}
           </td>
         )}
         {!skipMergedCells && (
@@ -476,6 +565,12 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             </div>
           </div>
           <div className="summary-card">
+            <div className="summary-label">환율 (EUR/KRW)</div>
+            <div className="summary-value summary-value-sm">
+              <EditableCell value={String(eurExchangeRate)} type="number" onSave={v => updateProject(project.id, { eurExchangeRate: Number(v) })} />
+            </div>
+          </div>
+          <div className="summary-card">
             <div className="summary-label">Initial Contract Amount (KRW)</div>
             <div className="summary-value summary-value-sm">
               <EditableCell value={String(initialContract || '')} type="number" onSave={handleInitialContractKRW} />
@@ -564,8 +659,13 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         <span className="budget-legend-item" style={{ backgroundColor: '#dbeafe' }}>확정 (FINAL PRICE)</span>
       </div>
 
+      {/* Top scrollbar */}
+      <div className="budget-top-scrollbar" ref={topScrollRef}>
+        <div style={{ width: tableScrollWidth, height: 1 }} />
+      </div>
+
       {/* Main Budget Table */}
-      <div className="budget-table-wrapper">
+      <div className="budget-table-wrapper" ref={tableWrapperRef}>
         <table className="budget-table">
           <thead>
             <tr>

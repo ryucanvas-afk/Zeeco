@@ -54,6 +54,7 @@ export interface Project {
   budgetKRW: number;
   budgetUSD: number;
   exchangeRate: number;
+  eurExchangeRate: number;
   targetGM: number;
   currentGM: number;
   engineeringCost: number;
@@ -161,6 +162,8 @@ export type BudgetPart = 'PE' | 'IC';
 export type BudgetItemCategory = 'item' | 'engineering' | 'contingency' | 'direct_cost';
 export type BudgetQuoteStatus = 'assumed' | 'quoting' | 'confirmed';
 
+export type QuotationCurrency = 'KRW' | 'USD' | 'EUR';
+
 export interface BudgetItem {
   id: string;
   part: BudgetPart;
@@ -169,6 +172,8 @@ export interface BudgetItem {
   originalBudgetUSD: number;
   originalBudgetKRW: number;
   quotationPrice: number;
+  quotationCurrency: QuotationCurrency;
+  quotationOriginalPrice: number;
   revisedBudget: number;
   supplier: string;
   rfqDate: string;
