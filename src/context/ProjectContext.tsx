@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem } from '../types';
+import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -43,6 +43,29 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     directCost: (p.directCost as number) || 0,
     contingency: (p.contingency as number) || 0,
     needsFactoryManagement: (p.needsFactoryManagement as boolean) || false,
+    initialContractAmount: (p.initialContractAmount as number) || 0,
+    updatedContractAmount: (p.updatedContractAmount as number) || 0,
+    contractAmountUSD: (p.contractAmountUSD as number) || 0,
+    budgetItems: ((p.budgetItems as Record<string, unknown>[]) || []).map((bi: Record<string, unknown>) => ({
+      id: (bi.id as string) || uuidv4(),
+      part: (bi.part as BudgetItem['part']) || 'PE',
+      category: (bi.category as BudgetItem['category']) || 'item',
+      name: (bi.name as string) || '',
+      originalBudgetUSD: (bi.originalBudgetUSD as number) || 0,
+      originalBudgetKRW: (bi.originalBudgetKRW as number) || 0,
+      quotationPrice: (bi.quotationPrice as number) || 0,
+      revisedBudget: (bi.revisedBudget as number) || 0,
+      supplier: (bi.supplier as string) || '',
+      rfqDate: (bi.rfqDate as string) || '',
+      rfqIssued: (bi.rfqIssued as boolean) || false,
+      poDate: (bi.poDate as string) || '',
+      poIssued: (bi.poIssued as boolean) || false,
+      expectedDelivery: (bi.expectedDelivery as string) || '',
+      requiredDelivery: (bi.requiredDelivery as string) || '',
+      remark: (bi.remark as string) || '',
+      quoteStatus: (bi.quoteStatus as BudgetItem['quoteStatus']) || 'assumed',
+      sortOrder: (bi.sortOrder as number) || 0,
+    })),
     inspections: ((p.inspections as Record<string, unknown>[]) || []).map((ins: Record<string, unknown>) => ({
       id: (ins.id as string) || uuidv4(),
       date: (ins.date as string) || '',
@@ -144,6 +167,10 @@ interface ProjectContextType {
   addFactoryPurchase: (projectId: string, fp: Omit<FactoryPurchase, 'id'>) => void;
   updateFactoryPurchase: (projectId: string, fpId: string, updates: Partial<FactoryPurchase>) => void;
   deleteFactoryPurchase: (projectId: string, fpId: string) => void;
+  addBudgetItem: (projectId: string, budgetItem: Omit<BudgetItem, 'id'>) => void;
+  updateBudgetItem: (projectId: string, budgetItemId: string, updates: Partial<BudgetItem>) => void;
+  deleteBudgetItem: (projectId: string, budgetItemId: string) => void;
+  reorderBudgetItems: (projectId: string, budgetItemIds: string[]) => void;
   reorderProjects: (projectIds: string[]) => void;
   reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
@@ -191,7 +218,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'factoryPurchases'>) => {
-    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [] }]);
+    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [] }]);
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {
@@ -426,6 +453,42 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const addBudgetItem = (projectId: string, budgetItem: Omit<BudgetItem, 'id'>) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return { ...p, budgetItems: [...(p.budgetItems || []), { ...budgetItem, id: uuidv4() }] };
+    }));
+  };
+
+  const updateBudgetItem = (projectId: string, budgetItemId: string, updates: Partial<BudgetItem>) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return {
+        ...p,
+        budgetItems: (p.budgetItems || []).map(bi => bi.id === budgetItemId ? { ...bi, ...updates } : bi),
+      };
+    }));
+  };
+
+  const deleteBudgetItem = (projectId: string, budgetItemId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return { ...p, budgetItems: (p.budgetItems || []).filter(bi => bi.id !== budgetItemId) };
+    }));
+  };
+
+  const reorderBudgetItems = (projectId: string, budgetItemIds: string[]) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const map = new Map((p.budgetItems || []).map(bi => [bi.id, bi]));
+      const reordered = budgetItemIds.map((id, idx) => {
+        const bi = map.get(id);
+        return bi ? { ...bi, sortOrder: idx } : null;
+      }).filter(Boolean) as BudgetItem[];
+      return { ...p, budgetItems: reordered };
+    }));
+  };
+
   return (
     <ProjectContext.Provider value={{
       projects,
@@ -436,6 +499,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addPurchase, updatePurchase, deletePurchase, reorderPurchases,
       addInspection, updateInspection, deleteInspection,
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
+      addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
       reorderProjects, reorderItems,
       importData, resetData,
     }}>

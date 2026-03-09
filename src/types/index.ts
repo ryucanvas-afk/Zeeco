@@ -60,6 +60,10 @@ export interface Project {
   directCost: number;
   contingency: number;
   needsFactoryManagement: boolean;
+  initialContractAmount: number;
+  updatedContractAmount: number;
+  contractAmountUSD: number;
+  budgetItems: BudgetItem[];
   items: ProjectItem[];
   inspections: InspectionEntry[];
   factoryPurchases: FactoryPurchase[];
@@ -148,6 +152,32 @@ export interface FactoryPurchase {
   amount: number;
   currency: string;
   notes: string;
+}
+
+// Budget Management Types
+export type BudgetPart = 'PE' | 'IC';
+export type BudgetItemCategory = 'item' | 'engineering' | 'contingency' | 'direct_cost';
+export type BudgetQuoteStatus = 'assumed' | 'quoting' | 'confirmed';
+
+export interface BudgetItem {
+  id: string;
+  part: BudgetPart;
+  category: BudgetItemCategory;
+  name: string;
+  originalBudgetUSD: number;
+  originalBudgetKRW: number;
+  quotationPrice: number;
+  revisedBudget: number;
+  supplier: string;
+  rfqDate: string;
+  rfqIssued: boolean;
+  poDate: string;
+  poIssued: boolean;
+  expectedDelivery: string;
+  requiredDelivery: string;
+  remark: string;
+  quoteStatus: BudgetQuoteStatus;
+  sortOrder: number;
 }
 
 // Todo List Types
