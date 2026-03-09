@@ -5259,6 +5259,12 @@ body {
   color: #dc2626;
 }
 
+.budget-context-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
 /* Bottom Summary Table */
 .budget-bottom-summary {
   background: var(--bg-glass-strong);

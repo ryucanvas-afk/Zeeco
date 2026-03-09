@@ -390,15 +390,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           <EditableCell value={item.remark} onSave={v => updateBudgetItem(project.id, item.id, { remark: v })} placeholder="-" />
         </td>
         <td className="budget-cell budget-cell-delete">
-          {inGroup && isGroupFirst ? (
-            <button
-              className="budget-unmerge-btn"
-              onClick={(e) => { e.stopPropagation(); handleUnmerge(item.groupId); }}
-              title="병합 해제"
-            >
-              &#x21C6;
-            </button>
-          ) : (
+          {(
             <button
               className="budget-delete-btn"
               onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
@@ -662,20 +654,32 @@ export default function BudgetTab({ project }: BudgetTabProps) {
       </div>
 
       {/* Context Menu */}
-      {contextMenu && (
-        <div className="budget-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
-          <button onClick={handleDelete}>삭제</button>
-          <button onClick={() => {
-            const item = budgetItems.find(i => i.id === contextMenu.itemId);
-            if (item) {
-              const newItem = { ...createEmptyBudgetItem(item.part, item.category, item.sortOrder + 0.5), name: '' };
-              addBudgetItem(project.id, newItem);
-            }
-            setContextMenu(null);
-          }}>아래에 행 추가</button>
-          <button onClick={() => setContextMenu(null)}>취소</button>
-        </div>
-      )}
+      {contextMenu && (() => {
+        const ctxItem = budgetItems.find(i => i.id === contextMenu.itemId);
+        const isInGroup = ctxItem && ctxItem.groupId;
+        const canMerge = selectedIds.size >= 2;
+        return (
+          <div className="budget-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+            <button onClick={handleDelete}>삭제</button>
+            <button onClick={() => {
+              const item = budgetItems.find(i => i.id === contextMenu.itemId);
+              if (item) {
+                const newItem = { ...createEmptyBudgetItem(item.part, item.category, item.sortOrder + 0.5), name: '' };
+                addBudgetItem(project.id, newItem);
+              }
+              setContextMenu(null);
+            }}>아래에 행 추가</button>
+            <div className="budget-context-divider" />
+            {canMerge && (
+              <button onClick={() => { handleMerge(); setContextMenu(null); }}>셀 병합</button>
+            )}
+            {isInGroup && (
+              <button onClick={() => { handleUnmerge(ctxItem.groupId); setContextMenu(null); }}>병합 해제</button>
+            )}
+            <button onClick={() => setContextMenu(null)}>취소</button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
