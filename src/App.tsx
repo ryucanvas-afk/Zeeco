@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ProjectProvider, useProjects } from './context/ProjectContext';
 import { TranslationProvider } from './context/TranslationContext';
+import { TodoProvider } from './context/TodoContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import Translation from './pages/Translation';
+import TodoList from './pages/TodoList';
 
 function UrlDataLoader() {
   const { importData } = useProjects();
@@ -37,17 +39,20 @@ function App() {
   return (
     <ProjectProvider>
       <TranslationProvider>
-        <UrlDataLoader />
-        <HashRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/projects" element={<ProjectList />} />
-              <Route path="/project/:id" element={<ProjectDetail />} />
-              <Route path="/translate" element={<Translation />} />
-            </Route>
-          </Routes>
-        </HashRouter>
+        <TodoProvider>
+          <UrlDataLoader />
+          <HashRouter>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/projects" element={<ProjectList />} />
+                <Route path="/project/:id" element={<ProjectDetail />} />
+                <Route path="/translate" element={<Translation />} />
+                <Route path="/todos" element={<TodoList />} />
+              </Route>
+            </Routes>
+          </HashRouter>
+        </TodoProvider>
       </TranslationProvider>
     </ProjectProvider>
   );
