@@ -72,6 +72,9 @@ export default function Layout() {
           <NavLink to="/projects" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             프로젝트 목록
           </NavLink>
+          <NavLink to="/todos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            To-Do
+          </NavLink>
           <NavLink to="/translate" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             번역
           </NavLink>

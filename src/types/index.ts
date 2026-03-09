@@ -150,6 +150,25 @@ export interface FactoryPurchase {
   notes: string;
 }
 
+// Todo List Types
+export type TodoPriority = 'urgent' | 'high' | 'normal' | 'low';
+export type TodoCategory = 'mail_write' | 'mail_reply' | 'drawing' | 'eic_request' | 'confirmation' | 'purchase_order' | 'general_request';
+
+export interface TodoItem {
+  id: string;
+  projectId: string;
+  title: string;
+  memo: string;
+  category: TodoCategory;
+  priority: TodoPriority;
+  dueDate: string;
+  dueDateTBD: boolean;
+  completed: boolean;
+  completedAt: string;
+  createdAt: string;
+  sortOrder: number;
+}
+
 // Translation Tool Types
 export interface SavedPhrase {
   id: string;
