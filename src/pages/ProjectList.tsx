@@ -41,7 +41,9 @@ export default function ProjectList() {
     contingency: 0,
     needsFactoryManagement: false,
     initialContractAmount: 0,
+    initialContractAmountUSD: 0,
     updatedContractAmount: 0,
+    updatedContractAmountUSD: 0,
     contractAmountUSD: 0,
     budgetItems: [],
   });
@@ -61,7 +63,7 @@ export default function ProjectList() {
       targetGM: 0, currentGM: 0,
       engineeringCost: 0,
       directCost: 0, contingency: 0, needsFactoryManagement: false,
-      initialContractAmount: 0, updatedContractAmount: 0, contractAmountUSD: 0, budgetItems: [],
+      initialContractAmount: 0, initialContractAmountUSD: 0, updatedContractAmount: 0, updatedContractAmountUSD: 0, contractAmountUSD: 0, budgetItems: [],
     });
     setShowForm(false);
   };

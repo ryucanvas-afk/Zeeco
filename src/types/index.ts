@@ -61,7 +61,9 @@ export interface Project {
   contingency: number;
   needsFactoryManagement: boolean;
   initialContractAmount: number;
+  initialContractAmountUSD: number;
   updatedContractAmount: number;
+  updatedContractAmountUSD: number;
   contractAmountUSD: number;
   budgetItems: BudgetItem[];
   items: ProjectItem[];
@@ -178,6 +180,7 @@ export interface BudgetItem {
   remark: string;
   quoteStatus: BudgetQuoteStatus;
   sortOrder: number;
+  groupId: string;
 }
 
 // Todo List Types
