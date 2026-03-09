@@ -44,7 +44,9 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     contingency: (p.contingency as number) || 0,
     needsFactoryManagement: (p.needsFactoryManagement as boolean) || false,
     initialContractAmount: (p.initialContractAmount as number) || 0,
+    initialContractAmountUSD: (p.initialContractAmountUSD as number) || 0,
     updatedContractAmount: (p.updatedContractAmount as number) || 0,
+    updatedContractAmountUSD: (p.updatedContractAmountUSD as number) || 0,
     contractAmountUSD: (p.contractAmountUSD as number) || 0,
     budgetItems: ((p.budgetItems as Record<string, unknown>[]) || []).map((bi: Record<string, unknown>) => ({
       id: (bi.id as string) || uuidv4(),

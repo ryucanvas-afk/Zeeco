@@ -59,7 +59,9 @@ export default function MindMap({ projects }: MindMapProps) {
       contingency: 0,
       needsFactoryManagement: false,
       initialContractAmount: 0,
+      initialContractAmountUSD: 0,
       updatedContractAmount: 0,
+      updatedContractAmountUSD: 0,
       contractAmountUSD: 0,
       budgetItems: [],
     });

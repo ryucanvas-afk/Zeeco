@@ -5316,3 +5316,76 @@ body {
   border: 1px solid var(--accent-blue);
   border-radius: 3px;
 }
+
+/* Multiline textarea for items */
+.budget-table .editable-textarea-input {
+  width: 100%;
+  min-width: 180px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid var(--accent-blue);
+  border-radius: 3px;
+  background: #fff;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.editable-cell-multiline {
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* Execution rate - bold, vivid colors */
+.budget-exec-rate {
+  font-weight: 700;
+  font-size: 12px !important;
+}
+
+.budget-exec-under {
+  color: #2563eb !important;
+  background: rgba(37, 99, 235, 0.06) !important;
+}
+
+.budget-exec-over {
+  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.06) !important;
+}
+
+/* Delete button in each row */
+.budget-cell-delete {
+  text-align: center;
+  width: 36px;
+  padding: 0 !important;
+}
+
+.budget-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.budget-delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Sub-value display under summary cards (exchange rate converted) */
+.summary-sub-value {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 2px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}

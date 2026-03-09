@@ -11,6 +11,14 @@ function fmt(n: number): string {
   return Math.round(n).toLocaleString();
 }
 
+function fmtUSD(n: number): string {
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function fmtKRW(n: number): string {
+  return '\u20A9' + Math.round(n).toLocaleString();
+}
+
 function fmtRate(n: number): string {
   if (n === 0) return '-';
   return (n * 100).toFixed(1) + '%';
@@ -74,8 +82,9 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
   // Contract & GM
   const initialContract = project.initialContractAmount || 0;
+  const initialContractUSD = project.initialContractAmountUSD || 0;
   const updatedContract = project.updatedContractAmount || 0;
-  const contractUSD = project.contractAmountUSD || 0;
+  const updatedContractUSD = project.updatedContractAmountUSD || 0;
   const totalBudget = grandTotal.origKRW;
   const totalRevised = grandTotal.revised;
   const initialGM = initialContract > 0 ? (initialContract - totalBudget) / initialContract : 0;
@@ -99,6 +108,10 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const handleContextMenu = (e: React.MouseEvent, itemId: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, itemId });
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    deleteBudgetItem(project.id, itemId);
   };
 
   const handleDelete = () => {
@@ -133,6 +146,39 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     dragOverId.current = null;
   };
 
+  // Exchange rate conversion helpers for contract amounts
+  const handleInitialContractKRW = (v: string) => {
+    const krw = Number(v) || 0;
+    updateProject(project.id, {
+      initialContractAmount: krw,
+      initialContractAmountUSD: exchangeRate > 0 ? Math.round(krw / exchangeRate) : 0,
+    });
+  };
+
+  const handleInitialContractUSD = (v: string) => {
+    const usd = Number(v) || 0;
+    updateProject(project.id, {
+      initialContractAmountUSD: usd,
+      initialContractAmount: Math.round(usd * exchangeRate),
+    });
+  };
+
+  const handleUpdatedContractKRW = (v: string) => {
+    const krw = Number(v) || 0;
+    updateProject(project.id, {
+      updatedContractAmount: krw,
+      updatedContractAmountUSD: exchangeRate > 0 ? Math.round(krw / exchangeRate) : 0,
+    });
+  };
+
+  const handleUpdatedContractUSD = (v: string) => {
+    const usd = Number(v) || 0;
+    updateProject(project.id, {
+      updatedContractAmountUSD: usd,
+      updatedContractAmount: Math.round(usd * exchangeRate),
+    });
+  };
+
   const quoteStatusOptions = [
     { value: 'assumed', label: '가정 (PP12)' },
     { value: 'quoting', label: '견적 진행중' },
@@ -165,9 +211,9 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         onContextMenu={(e) => handleContextMenu(e, item.id)}
         style={{ backgroundColor: quoteStatusColor(item.quoteStatus) }}
       >
-        <td className="budget-cell budget-drag-handle">⠿</td>
+        <td className="budget-cell budget-drag-handle">&#x2807;</td>
         <td className="budget-cell budget-cell-name">
-          <EditableCell value={item.name} onSave={v => updateBudgetItem(project.id, item.id, { name: v })} placeholder="품목명 입력" />
+          <EditableCell value={item.name} type="multiline" onSave={v => updateBudgetItem(project.id, item.id, { name: v })} placeholder="품목명 입력" />
         </td>
         <td className="budget-cell budget-cell-num">
           <EditableCell value={String(item.originalBudgetUSD || '')} type="number" onSave={v => {
@@ -182,7 +228,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         <td className="budget-cell budget-cell-num">
           <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
         </td>
-        <td className={`budget-cell budget-cell-num budget-cell-auto ${isEngOrCost ? 'budget-cell-dash' : ''}`}>
+        <td className={`budget-cell budget-cell-num budget-exec-rate ${isEngOrCost ? 'budget-cell-dash' : execRate > 1 ? 'budget-exec-over' : execRate > 0 ? 'budget-exec-under' : ''}`}>
           {isEngOrCost ? '-' : fmtRate(execRate)}
         </td>
         <td className={`budget-cell budget-cell-num budget-cell-auto ${amtChange < 0 ? 'budget-cell-negative' : amtChange > 0 ? 'budget-cell-positive' : ''}`}>
@@ -230,6 +276,15 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         <td className="budget-cell">
           <EditableCell value={item.remark} onSave={v => updateBudgetItem(project.id, item.id, { remark: v })} placeholder="-" />
         </td>
+        <td className="budget-cell budget-cell-delete">
+          <button
+            className="budget-delete-btn"
+            onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
+            title="삭제"
+          >
+            &times;
+          </button>
+        </td>
       </tr>
     );
   };
@@ -244,7 +299,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
       <td className="budget-cell budget-cell-num">{fmt(totals.revised)}</td>
       <td className="budget-cell budget-cell-num">-</td>
       <td className={`budget-cell budget-cell-num ${totals.change < 0 ? 'budget-cell-negative' : 'budget-cell-positive'}`}>{fmt(totals.change)}</td>
-      <td colSpan={7} className="budget-cell"></td>
+      <td colSpan={8} className="budget-cell"></td>
     </tr>
   );
 
@@ -258,8 +313,8 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     return (
       <>
         <tr className="budget-part-header" onClick={() => togglePart(part)}>
-          <td colSpan={15} className="budget-cell">
-            <span className="budget-part-toggle">{isCollapsed ? '▶' : '▼'}</span>
+          <td colSpan={16} className="budget-cell">
+            <span className="budget-part-toggle">{isCollapsed ? '\u25B6' : '\u25BC'}</span>
             <strong>{PART_LABELS[part]}</strong>
             <span className="budget-part-summary">({items.length}개 항목 | 수정예산: {fmt(totals.revised)} 원)</span>
           </td>
@@ -269,14 +324,14 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             {regularItems.map(item => renderRow(item, part))}
             {engineeringItems.length > 0 && (
               <tr className="budget-category-header">
-                <td colSpan={15} className="budget-cell budget-category-label">Engineering Hours</td>
+                <td colSpan={16} className="budget-cell budget-category-label">Engineering Hours</td>
               </tr>
             )}
             {engineeringItems.map(item => renderRow(item, part))}
             {directCostItems.map(item => renderRow(item, part))}
             {contingencyItems.map(item => renderRow(item, part))}
             <tr className="budget-add-row">
-              <td colSpan={15} className="budget-cell">
+              <td colSpan={16} className="budget-cell">
                 <div className="budget-add-buttons">
                   <button className="budget-add-btn" onClick={() => handleAddItem(part, 'item')}>+ 품목 추가</button>
                   <button className="budget-add-btn" onClick={() => handleAddItem(part, 'engineering')}>+ Engineering</button>
@@ -304,33 +359,43 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             </div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Initial Contract (KRW)</div>
+            <div className="summary-label">Initial Contract Amount (KRW)</div>
             <div className="summary-value summary-value-sm">
-              <EditableCell value={String(initialContract || '')} type="number" onSave={v => updateProject(project.id, { initialContractAmount: Number(v) || 0 })} />
+              <EditableCell value={String(initialContract || '')} type="number" onSave={handleInitialContractKRW} />
             </div>
+            <div className="summary-sub-value">{initialContractUSD > 0 ? fmtUSD(initialContractUSD) : '-'}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Contract Amount (USD)</div>
+            <div className="summary-label">Initial Contract Amount (USD)</div>
             <div className="summary-value summary-value-sm">
-              <EditableCell value={String(contractUSD || '')} type="number" onSave={v => updateProject(project.id, { contractAmountUSD: Number(v) || 0 })} />
+              <EditableCell value={String(initialContractUSD || '')} type="number" onSave={handleInitialContractUSD} />
             </div>
+            <div className="summary-sub-value">{initialContract > 0 ? fmtKRW(initialContract) : '-'}</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">Updated Contract (KRW)</div>
             <div className="summary-value summary-value-sm">
-              <EditableCell value={String(updatedContract || '')} type="number" onSave={v => updateProject(project.id, { updatedContractAmount: Number(v) || 0 })} />
+              <EditableCell value={String(updatedContract || '')} type="number" onSave={handleUpdatedContractKRW} />
             </div>
+            <div className="summary-sub-value">{updatedContractUSD > 0 ? fmtUSD(updatedContractUSD) : '-'}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-label">Updated Contract (USD)</div>
+            <div className="summary-value summary-value-sm">
+              <EditableCell value={String(updatedContractUSD || '')} type="number" onSave={handleUpdatedContractUSD} />
+            </div>
+            <div className="summary-sub-value">{updatedContract > 0 ? fmtKRW(updatedContract) : '-'}</div>
           </div>
         </div>
 
         <div className="summary-cards">
           <div className="summary-card card-ordered">
             <div className="summary-label">Total Budget</div>
-            <div className="summary-value summary-value-sm">{fmt(totalBudget)} 원</div>
+            <div className="summary-value summary-value-sm">{fmtKRW(totalBudget)}</div>
           </div>
           <div className="summary-card card-shipped">
             <div className="summary-label">수정 예산 합계</div>
-            <div className="summary-value summary-value-sm">{fmt(totalRevised)} 원</div>
+            <div className="summary-value summary-value-sm">{fmtKRW(totalRevised)}</div>
           </div>
           <div className="summary-card card-pending">
             <div className="summary-label">Initial GM</div>
@@ -374,6 +439,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
               <th className="budget-th budget-th-sm">요구 입고</th>
               <th className="budget-th">상태</th>
               <th className="budget-th">Remark</th>
+              <th className="budget-th" style={{ width: 36 }}>삭제</th>
             </tr>
           </thead>
           <tbody>
@@ -390,18 +456,18 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           <tbody>
             <tr>
               <td className="budget-summary-label">Initial Contract Amount</td>
-              <td className="budget-summary-val">{fmt(initialContract)} 원</td>
-              <td className="budget-summary-val">${fmt(contractUSD)}</td>
+              <td className="budget-summary-val">{fmtKRW(initialContract)}</td>
+              <td className="budget-summary-val">{fmtUSD(initialContractUSD)}</td>
             </tr>
             <tr>
               <td className="budget-summary-label">Updated Contract Amount</td>
-              <td className="budget-summary-val">{fmt(updatedContract)} 원</td>
-              <td></td>
+              <td className="budget-summary-val">{fmtKRW(updatedContract)}</td>
+              <td className="budget-summary-val">{fmtUSD(updatedContractUSD)}</td>
             </tr>
             <tr>
               <td className="budget-summary-label">Total Budget</td>
-              <td className="budget-summary-val">{fmt(totalBudget)} 원</td>
-              <td className="budget-summary-val">${fmt(totalBudget / exchangeRate)}</td>
+              <td className="budget-summary-val">{fmtKRW(totalBudget)}</td>
+              <td className="budget-summary-val">{fmtUSD(totalBudget / exchangeRate)}</td>
             </tr>
             <tr>
               <td className="budget-summary-label">Initial GM</td>

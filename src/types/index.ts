@@ -61,7 +61,9 @@ export interface Project {
   contingency: number;
   needsFactoryManagement: boolean;
   initialContractAmount: number;
+  initialContractAmountUSD: number;
   updatedContractAmount: number;
+  updatedContractAmountUSD: number;
   contractAmountUSD: number;
   budgetItems: BudgetItem[];
   items: ProjectItem[];
