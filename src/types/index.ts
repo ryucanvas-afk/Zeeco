@@ -169,6 +169,14 @@ export interface TodoItem {
   sortOrder: number;
 }
 
+export interface QuickPhrase {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  createdAt: string;
+}
+
 // Translation Tool Types
 export interface SavedPhrase {
   id: string;

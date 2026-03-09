@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import type { TodoItem, TodoCategory, TodoPriority } from '../types';
+import type { TodoItem, TodoCategory, TodoPriority, QuickPhrase } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-todos';
+const PHRASES_KEY = 'zeeco-quick-phrases';
 
 interface TodoContextType {
   todos: TodoItem[];
@@ -14,6 +15,10 @@ interface TodoContextType {
   bulkComplete: (ids: string[]) => void;
   bulkDelete: (ids: string[]) => void;
   reorderTodos: (projectId: string, reorderedIds: string[]) => void;
+  phrases: QuickPhrase[];
+  addPhrase: (phrase: Omit<QuickPhrase, 'id' | 'createdAt'>) => void;
+  updatePhrase: (id: string, updates: Partial<QuickPhrase>) => void;
+  deletePhrase: (id: string) => void;
 }
 
 const TodoContext = createContext<TodoContextType | null>(null);
@@ -28,9 +33,22 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [phrases, setPhrases] = useState<QuickPhrase[]>(() => {
+    try {
+      const stored = localStorage.getItem(PHRASES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   }, [todos]);
+
+  useEffect(() => {
+    localStorage.setItem(PHRASES_KEY, JSON.stringify(phrases));
+  }, [phrases]);
 
   const addTodo = useCallback((todo: Omit<TodoItem, 'id' | 'completed' | 'completedAt' | 'createdAt' | 'sortOrder'>) => {
     setTodos(prev => {
@@ -87,8 +105,20 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addPhrase = useCallback((phrase: Omit<QuickPhrase, 'id' | 'createdAt'>) => {
+    setPhrases(prev => [...prev, { ...phrase, id: uuidv4(), createdAt: new Date().toISOString() }]);
+  }, []);
+
+  const updatePhrase = useCallback((id: string, updates: Partial<QuickPhrase>) => {
+    setPhrases(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }, []);
+
+  const deletePhrase = useCallback((id: string) => {
+    setPhrases(prev => prev.filter(p => p.id !== id));
+  }, []);
+
   return (
-    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos }}>
+    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase }}>
       {children}
     </TodoContext.Provider>
   );
