@@ -173,7 +173,11 @@ export default function TodoList() {
     }
     for (const [key, items] of map) {
       if (viewTab === 'active') {
-        items.sort((a, b) => a.sortOrder - b.sortOrder);
+        items.sort((a, b) => {
+          const priorityDiff = PRIORITY_MAP[a.priority].order - PRIORITY_MAP[b.priority].order;
+          if (priorityDiff !== 0) return priorityDiff;
+          return a.sortOrder - b.sortOrder;
+        });
       } else {
         items.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
       }
