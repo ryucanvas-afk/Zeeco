@@ -52,6 +52,7 @@ export default function MindMap({ projects }: MindMapProps) {
       budgetKRW: 0,
       budgetUSD: 0,
       exchangeRate: 1350,
+      eurExchangeRate: 1500,
       targetGM: 0,
       currentGM: 0,
       engineeringCost: 0,

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -33,6 +33,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     budgetKRW: (p.budgetKRW as number) || 0,
     budgetUSD: (p.budgetUSD as number) || 0,
     exchangeRate: (p.exchangeRate as number) || 1350,
+    eurExchangeRate: (p.eurExchangeRate as number) || 1500,
     targetGM: (p.targetGM as number) || 0,
     currentGM: (p.currentGM as number) || 0,
     engineeringCost: (p.engineeringCost as number) || (() => {
@@ -56,6 +57,8 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
       originalBudgetUSD: (bi.originalBudgetUSD as number) || 0,
       originalBudgetKRW: (bi.originalBudgetKRW as number) || 0,
       quotationPrice: (bi.quotationPrice as number) || 0,
+      quotationCurrency: (bi.quotationCurrency as BudgetItem['quotationCurrency']) || 'KRW',
+      quotationOriginalPrice: (bi.quotationOriginalPrice as number) || 0,
       revisedBudget: (bi.revisedBudget as number) || 0,
       supplier: (bi.supplier as string) || '',
       rfqDate: (bi.rfqDate as string) || '',

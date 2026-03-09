@@ -4966,12 +4966,78 @@ body {
   border: 1px solid var(--border-color);
 }
 
+.budget-top-scrollbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.budget-top-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+
+.budget-top-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 5px;
+}
+
+.budget-top-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 5px;
+}
+
+.budget-top-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
 .budget-table-wrapper {
   overflow-x: auto;
   background: var(--bg-glass-strong);
-  border-radius: var(--radius);
+  border-radius: 0 0 var(--radius) var(--radius);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
+  border-top: none;
+}
+
+/* Currency selector in quotation price column */
+.budget-quote-input {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.budget-currency-select {
+  width: 28px;
+  padding: 1px 0;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.budget-currency-select:hover {
+  border-color: var(--primary);
+}
+
+.budget-converted-krw {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 1px;
+  white-space: nowrap;
 }
 
 .budget-table {
@@ -5418,7 +5484,8 @@ body {
 /* Merged cell highlight */
 .budget-cell-merged {
   background: rgba(59, 130, 246, 0.04) !important;
-  border-left: 2px solid #3b82f6 !important;
+  border-left: none !important;
+  border-right: none !important;
   vertical-align: middle;
 }
 
