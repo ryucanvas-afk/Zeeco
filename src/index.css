@@ -6,17 +6,17 @@
 }
 
 :root {
-  --bg-primary: #f0f2f5;
-  --bg-secondary: rgba(255, 255, 255, 0.72);
-  --bg-tertiary: rgba(255, 255, 255, 0.5);
-  --bg-hover: rgba(0, 0, 0, 0.03);
-  --bg-glass: rgba(255, 255, 255, 0.65);
-  --bg-glass-strong: rgba(255, 255, 255, 0.85);
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a5568;
-  --text-muted: #8896a6;
-  --border-color: rgba(0, 0, 0, 0.06);
-  --border-hover: rgba(0, 0, 0, 0.12);
+  --bg-primary: #e8eaef;
+  --bg-secondary: rgba(255, 255, 255, 0.88);
+  --bg-tertiary: rgba(255, 255, 255, 0.7);
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --bg-glass: rgba(255, 255, 255, 0.82);
+  --bg-glass-strong: rgba(255, 255, 255, 0.92);
+  --text-primary: #0f0f1a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-color: rgba(0, 0, 0, 0.12);
+  --border-hover: rgba(0, 0, 0, 0.22);
   --accent-blue: #3b82f6;
   --accent-green: #10b981;
   --accent-yellow: #f59e0b;
@@ -171,15 +171,15 @@ body {
 }
 
 .summary-card {
-  background: var(--bg-glass);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 0, 0, 0.13);
   border-radius: var(--radius-lg);
   padding: 22px;
   text-align: center;
   transition: var(--transition);
-  box-shadow: var(--shadow-glass);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .summary-card:hover {
@@ -209,23 +209,23 @@ body {
   margin-top: 6px;
 }
 
-.card-pending { border-left: 3px solid var(--accent-purple); }
-.card-ordered { border-left: 3px solid var(--accent-blue); }
-.card-shipped { border-left: 3px solid var(--accent-yellow); }
-.card-delivered { border-left: 3px solid var(--accent-green); }
-.card-cost { border-left: 3px solid var(--accent-red); }
+.card-pending { border-left: 4px solid var(--accent-purple); background: rgba(99, 102, 241, 0.08); }
+.card-ordered { border-left: 4px solid var(--accent-blue); background: rgba(59, 130, 246, 0.08); }
+.card-shipped { border-left: 4px solid var(--accent-yellow); background: rgba(245, 158, 11, 0.08); }
+.card-delivered { border-left: 4px solid var(--accent-green); background: rgba(16, 185, 129, 0.08); }
+.card-cost { border-left: 4px solid var(--accent-red); background: rgba(239, 68, 68, 0.06); }
 
 /* ===== Section Card ===== */
 .section-card {
-  background: var(--bg-glass);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 0, 0, 0.13);
   border-radius: var(--radius-lg);
   padding: 24px;
   margin-bottom: 24px;
   transition: var(--transition);
-  box-shadow: var(--shadow-glass);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .section-card:hover {
@@ -272,15 +272,15 @@ body {
   letter-spacing: 0.02em;
 }
 
-.badge-planning { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
-.badge-progress { background: rgba(245, 158, 11, 0.1); color: #d97706; }
-.badge-completed { background: rgba(16, 185, 129, 0.1); color: #059669; }
-.badge-hold { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
-.badge-delayed { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
-.badge-ordered { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
-.badge-mfg { background: rgba(236, 72, 153, 0.1); color: #db2777; }
-.badge-mfg-done { background: rgba(20, 184, 166, 0.1); color: #0d9488; }
-.badge-partial { background: rgba(251, 191, 36, 0.1); color: #d97706; }
+.badge-planning { background: rgba(99, 102, 241, 0.18); color: #4338ca; font-weight: 700; }
+.badge-progress { background: rgba(245, 158, 11, 0.18); color: #b45309; font-weight: 700; }
+.badge-completed { background: rgba(16, 185, 129, 0.18); color: #047857; font-weight: 700; }
+.badge-hold { background: rgba(239, 68, 68, 0.18); color: #b91c1c; font-weight: 700; }
+.badge-delayed { background: rgba(239, 68, 68, 0.2); color: #b91c1c; font-weight: 700; }
+.badge-ordered { background: rgba(59, 130, 246, 0.18); color: #1d4ed8; font-weight: 700; }
+.badge-mfg { background: rgba(236, 72, 153, 0.18); color: #be185d; font-weight: 700; }
+.badge-mfg-done { background: rgba(20, 184, 166, 0.18); color: #0f766e; font-weight: 700; }
+.badge-partial { background: rgba(251, 191, 36, 0.18); color: #92400e; font-weight: 700; }
 
 /* ===== Buttons ===== */
 .btn {
@@ -1385,16 +1385,17 @@ body {
 .purchase-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .purchase-card {
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
   border-radius: var(--radius);
   overflow: hidden;
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .purchase-card:active {
@@ -1406,14 +1407,70 @@ body {
   transform: scale(0.98);
 }
 
-.purchase-card-done {
-  opacity: 0.55;
-  background: rgba(16, 185, 129, 0.04);
-  border-color: rgba(16, 185, 129, 0.15);
+/* Status-based background colors */
+.purchase-card[data-status="rfq_writing"] {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.purchase-card[data-status="rfq_writing"] .purchase-card-header {
+  background: rgba(99, 102, 241, 0.15);
+  border-bottom-color: rgba(99, 102, 241, 0.25);
 }
 
-.purchase-card-done .purchase-card-header {
-  background: rgba(16, 185, 129, 0.08);
+.purchase-card[data-status="internal_approval"],
+.purchase-card[data-status="zoe_approval"] {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.purchase-card[data-status="internal_approval"] .purchase-card-header,
+.purchase-card[data-status="zoe_approval"] .purchase-card-header {
+  background: rgba(245, 158, 11, 0.15);
+  border-bottom-color: rgba(245, 158, 11, 0.25);
+}
+
+.purchase-card[data-status="po_completed"] {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+.purchase-card[data-status="po_completed"] .purchase-card-header {
+  background: rgba(59, 130, 246, 0.15);
+  border-bottom-color: rgba(59, 130, 246, 0.25);
+}
+
+.purchase-card[data-status="manufacturing"] {
+  background: rgba(236, 72, 153, 0.06);
+  border-color: rgba(236, 72, 153, 0.3);
+}
+.purchase-card[data-status="manufacturing"] .purchase-card-header {
+  background: rgba(236, 72, 153, 0.15);
+  border-bottom-color: rgba(236, 72, 153, 0.25);
+}
+
+.purchase-card[data-status="inspecting"] {
+  background: rgba(20, 184, 166, 0.06);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+.purchase-card[data-status="inspecting"] .purchase-card-header {
+  background: rgba(20, 184, 166, 0.15);
+  border-bottom-color: rgba(20, 184, 166, 0.25);
+}
+
+.purchase-card[data-status="delivered"] {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.purchase-card[data-status="delivered"] .purchase-card-header {
+  background: rgba(16, 185, 129, 0.15);
+  border-bottom-color: rgba(16, 185, 129, 0.25);
+}
+
+.purchase-card[data-status="partial_delivered"] {
+  background: rgba(251, 191, 36, 0.06);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.purchase-card[data-status="partial_delivered"] .purchase-card-header {
+  background: rgba(251, 191, 36, 0.15);
+  border-bottom-color: rgba(251, 191, 36, 0.25);
 }
 
 .purchase-card-header {
@@ -1421,8 +1478,8 @@ body {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(16, 185, 129, 0.15);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(0, 0, 0, 0.06);
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.12);
 }
 
 .purchase-order-num {
@@ -1456,7 +1513,57 @@ body {
 
 .purchase-card-spec {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #334155;
+}
+
+/* Purchase sub-tab toggle */
+.purchase-sub-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  width: fit-content;
+}
+
+.purchase-sub-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.purchase-sub-tab:last-child {
+  border-right: none;
+}
+
+.purchase-sub-tab:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.purchase-sub-tab.active {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.purchase-sub-tab .tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.purchase-sub-tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .purchase-card-grid {
@@ -1476,7 +1583,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .pc-row:last-child {
@@ -1491,11 +1598,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px 8px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .pc-field:first-child {
-  border-right: 1px solid rgba(71, 85, 105, 0.3);
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .pc-row-full .pc-field:first-child {
@@ -1509,9 +1617,10 @@ body {
 
 .pc-field label {
   font-size: 10px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: #1e293b;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .purchase-field {
@@ -1623,7 +1732,7 @@ body {
 .item-po-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .item-po-row:last-child {
@@ -1638,7 +1747,7 @@ body {
 }
 
 .item-po-field:first-child {
-  border-right: 1px solid rgba(71, 85, 105, 0.3);
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .item-po-field label {
@@ -1691,7 +1800,8 @@ body {
 }
 
 .purchase-card .editable-cell {
-  color: var(--text-primary);
+  color: #0f172a;
+  font-weight: 500;
 }
 
 .purchase-card .purchase-card-body .purchase-field .td-cost {
