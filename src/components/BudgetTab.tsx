@@ -121,6 +121,12 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     .reduce((s, i) => s + (i.revisedBudget - i.quotationPrice), 0);
   const expectedGM2 = updatedContract > 0 ? (updatedContract - totalRevised + surplusFromExecution) / updatedContract : 0;
 
+  // Target GM & Available Budget calculation
+  const targetGM = project.targetGM || 0;
+  const contractForCalc = updatedContract > 0 ? updatedContract : initialContract;
+  const availableBudget = contractForCalc > 0 ? contractForCalc * (1 - targetGM / 100) : 0;
+  const remainingBudget = availableBudget - totalRevised;
+
   const togglePart = (part: string) => {
     setCollapsedParts(prev => ({ ...prev, [part]: !prev[part] }));
   };
@@ -252,6 +258,17 @@ export default function BudgetTab({ project }: BudgetTabProps) {
     }
   };
 
+  // Compute group-level aggregated values for merged display
+  const getGroupTotals = useCallback((groupId: string) => {
+    const groupItems = budgetItems.filter(i => i.groupId === groupId);
+    const totalQuotation = groupItems.reduce((s, i) => s + i.quotationPrice, 0);
+    const totalRevised = groupItems.reduce((s, i) => s + i.revisedBudget, 0);
+    const totalOrigKRW = groupItems.reduce((s, i) => s + (i.originalBudgetKRW || i.originalBudgetUSD * exchangeRate), 0);
+    const execRate = totalRevised > 0 ? totalQuotation / totalRevised : 0;
+    const amtChange = totalOrigKRW - totalRevised;
+    return { totalQuotation, totalRevised, execRate, amtChange, totalOrigKRW };
+  }, [budgetItems, exchangeRate]);
+
   const renderRow = (item: BudgetItem, part: BudgetPart, groupInfo: Record<string, { isFirst: boolean; span: number }>) => {
     const origKRW = item.originalBudgetKRW || calcOriginalKRW(item);
     const execRate = calcExecutionRate(item);
@@ -266,10 +283,16 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
     const isSelected = selectedIds.has(item.id);
 
+    // For merged groups, use group totals for display
+    const groupTotals = inGroup ? getGroupTotals(item.groupId) : null;
+    const displayExecRate = inGroup && isGroupFirst ? (groupTotals?.execRate ?? 0) : execRate;
+    const displayAmtChange = inGroup && isGroupFirst ? (groupTotals?.amtChange ?? 0) : amtChange;
+
     // Execution rate color: 90% threshold
+    const rateForColor = inGroup && isGroupFirst ? displayExecRate : execRate;
     const execRateClass = isEngOrCost ? 'budget-cell-dash' :
-      execRate >= 0.9 ? 'budget-exec-over' :
-      execRate > 0 ? 'budget-exec-under' : '';
+      rateForColor >= 0.9 ? 'budget-exec-over' :
+      rateForColor > 0 ? 'budget-exec-under' : '';
 
     return (
       <tr
@@ -301,23 +324,29 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           }} placeholder="-" />
         </td>
         <td className="budget-cell budget-cell-num budget-cell-auto">{item.originalBudgetUSD > 0 ? fmt(origKRW) : '-'}</td>
-        {/* Merged columns: 견적가, 견적업체 */}
+        {/* Merged columns: 견적가, 수정예산, 실행율, 금액증감, 견적업체 */}
         {!skipMergedCells && (
           <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
             <EditableCell value={String(item.quotationPrice || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { quotationPrice: Number(v) || 0 })} placeholder="-" />
           </td>
         )}
-        <td className="budget-cell budget-cell-num">
-          <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
-        </td>
-        <td className={`budget-cell budget-cell-num budget-exec-rate ${execRateClass}`}>
-          {isEngOrCost ? '-' : fmtRate(execRate)}
-        </td>
-        <td className={`budget-cell budget-cell-num budget-cell-auto ${amtChange < 0 ? 'budget-cell-negative' : amtChange > 0 ? 'budget-cell-positive' : ''}`}>
-          {item.revisedBudget > 0 || origKRW > 0 ? fmt(amtChange) : '-'}
-        </td>
         {!skipMergedCells && (
-          <td className={`budget-cell ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+          <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+            <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-num budget-exec-rate ${execRateClass} ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
+            {isEngOrCost ? '-' : fmtRate(displayExecRate)}
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-num budget-cell-auto ${inGroup ? 'budget-cell-merged' : ''} ${displayAmtChange < 0 ? 'budget-cell-negative' : displayAmtChange > 0 ? 'budget-cell-positive' : ''}`} rowSpan={inGroup ? span : undefined}>
+            {(inGroup ? (groupTotals?.totalOrigKRW ?? 0) > 0 || (groupTotals?.totalRevised ?? 0) > 0 : item.revisedBudget > 0 || origKRW > 0) ? fmt(displayAmtChange) : '-'}
+          </td>
+        )}
+        {!skipMergedCells && (
+          <td className={`budget-cell budget-cell-supplier ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
             <EditableCell value={item.supplier} onSave={v => updateBudgetItem(project.id, item.id, { supplier: v })} placeholder="-" />
           </td>
         )}
@@ -361,15 +390,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           <EditableCell value={item.remark} onSave={v => updateBudgetItem(project.id, item.id, { remark: v })} placeholder="-" />
         </td>
         <td className="budget-cell budget-cell-delete">
-          {inGroup && isGroupFirst ? (
-            <button
-              className="budget-unmerge-btn"
-              onClick={(e) => { e.stopPropagation(); handleUnmerge(item.groupId); }}
-              title="병합 해제"
-            >
-              &#x21C6;
-            </button>
-          ) : (
+          {(
             <button
               className="budget-delete-btn"
               onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
@@ -506,6 +527,25 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             <div className="summary-value summary-value-sm">{(expectedGM2 * 100).toFixed(2)}%</div>
           </div>
         </div>
+
+        <div className="summary-cards">
+          <div className="summary-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+            <div className="summary-label">Target GM (%)</div>
+            <div className="summary-value summary-value-sm">
+              <EditableCell value={String(targetGM || '')} type="number" onSave={v => updateProject(project.id, { targetGM: Number(v) || 0 })} placeholder="0" />
+            </div>
+          </div>
+          <div className="summary-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+            <div className="summary-label">사용 가능 예산 (Target GM 기준)</div>
+            <div className="summary-value summary-value-sm">{fmtKRW(availableBudget)}</div>
+            <div className="summary-sub-value">{fmtUSD(availableBudget / exchangeRate)}</div>
+          </div>
+          <div className={`summary-card ${remainingBudget >= 0 ? 'card-delivered' : 'card-cost'}`} style={{ borderLeft: `4px solid ${remainingBudget >= 0 ? '#10b981' : '#ef4444'}` }}>
+            <div className="summary-label">잔여 예산 (가용 - 수정예산)</div>
+            <div className="summary-value summary-value-sm" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626' }}>{fmtKRW(remainingBudget)}</div>
+            <div className="summary-sub-value">{fmtUSD(remainingBudget / exchangeRate)}</div>
+          </div>
+        </div>
       </div>
 
       {/* Merge toolbar */}
@@ -590,25 +630,56 @@ export default function BudgetTab({ project }: BudgetTabProps) {
               <td className="budget-summary-val">{(expectedGM2 * 100).toFixed(2)}%</td>
               <td></td>
             </tr>
+            {targetGM > 0 && (
+              <>
+                <tr style={{ borderTop: '2px solid #8b5cf6' }}>
+                  <td className="budget-summary-label" style={{ color: '#7c3aed' }}>Target GM</td>
+                  <td className="budget-summary-val">{targetGM}%</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td className="budget-summary-label" style={{ color: '#7c3aed' }}>사용 가능 예산</td>
+                  <td className="budget-summary-val">{fmtKRW(availableBudget)}</td>
+                  <td className="budget-summary-val">{fmtUSD(availableBudget / exchangeRate)}</td>
+                </tr>
+                <tr>
+                  <td className="budget-summary-label" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626', fontWeight: 600 }}>잔여 예산</td>
+                  <td className="budget-summary-val" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626' }}>{fmtKRW(remainingBudget)}</td>
+                  <td className="budget-summary-val" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626' }}>{fmtUSD(remainingBudget / exchangeRate)}</td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Context Menu */}
-      {contextMenu && (
-        <div className="budget-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
-          <button onClick={handleDelete}>삭제</button>
-          <button onClick={() => {
-            const item = budgetItems.find(i => i.id === contextMenu.itemId);
-            if (item) {
-              const newItem = { ...createEmptyBudgetItem(item.part, item.category, item.sortOrder + 0.5), name: '' };
-              addBudgetItem(project.id, newItem);
-            }
-            setContextMenu(null);
-          }}>아래에 행 추가</button>
-          <button onClick={() => setContextMenu(null)}>취소</button>
-        </div>
-      )}
+      {contextMenu && (() => {
+        const ctxItem = budgetItems.find(i => i.id === contextMenu.itemId);
+        const isInGroup = ctxItem && ctxItem.groupId;
+        const canMerge = selectedIds.size >= 2;
+        return (
+          <div className="budget-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+            <button onClick={handleDelete}>삭제</button>
+            <button onClick={() => {
+              const item = budgetItems.find(i => i.id === contextMenu.itemId);
+              if (item) {
+                const newItem = { ...createEmptyBudgetItem(item.part, item.category, item.sortOrder + 0.5), name: '' };
+                addBudgetItem(project.id, newItem);
+              }
+              setContextMenu(null);
+            }}>아래에 행 추가</button>
+            <div className="budget-context-divider" />
+            {canMerge && (
+              <button onClick={() => { handleMerge(); setContextMenu(null); }}>셀 병합</button>
+            )}
+            {isInGroup && (
+              <button onClick={() => { handleUnmerge(ctxItem.groupId); setContextMenu(null); }}>병합 해제</button>
+            )}
+            <button onClick={() => setContextMenu(null)}>취소</button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
