@@ -558,7 +558,7 @@ export default function TodoList() {
           const projectColor = getProjectColor(projectId);
 
           return (
-            <div key={projectId} className="todo-project-card" style={{ borderTopColor: projectColor }}>
+            <div key={projectId} className={`todo-project-card ${projectId === COMMON_PROJECT_ID ? 'todo-project-card-common' : ''}`} style={{ borderTopColor: projectColor }}>
               <div className="todo-project-card-header">
                 <div className="todo-project-card-title">
                   <span className="todo-project-dot" style={{ background: projectColor }} />

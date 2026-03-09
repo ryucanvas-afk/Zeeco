@@ -4142,6 +4142,10 @@ body {
   align-items: start;
 }
 
+.todo-project-card-common {
+  grid-column: 1 / -1;
+}
+
 .todo-project-card {
   background: var(--bg-glass);
   backdrop-filter: var(--blur);
