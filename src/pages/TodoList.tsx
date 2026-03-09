@@ -52,8 +52,8 @@ export default function TodoList() {
     projectId: '',
   });
 
-  // Phrases panel state
-  const [showPhrases, setShowPhrases] = useState(false);
+  // Phrases state
+  const [showPhrases, setShowPhrases] = useState(true);
   const [phraseSearch, setPhraseSearch] = useState('');
   const [phraseFilterCat, setPhraseFilterCat] = useState<string>('all');
   const [editingPhrase, setEditingPhrase] = useState<string | null>(null);
@@ -142,13 +142,11 @@ export default function TodoList() {
   // Group by project
   const groupedByProject = useMemo(() => {
     const map = new Map<string, TodoItem[]>();
-    // Include "no project" group
     for (const todo of filteredTodos) {
       const group = map.get(todo.projectId) || [];
       group.push(todo);
       map.set(todo.projectId, group);
     }
-    // Sort within each group
     for (const [key, items] of map) {
       if (viewTab === 'active') {
         items.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -303,9 +301,7 @@ export default function TodoList() {
   // Which projects to show cards for
   const projectIdsToShow = useMemo(() => {
     const idsWithTodos = Array.from(groupedByProject.keys());
-    // Show all visible projects + any with todos (even deleted)
     const allIds = new Set([...visibleProjects.map(p => p.id), ...idsWithTodos]);
-    // Sort: projects with todos first, then alphabetically
     return Array.from(allIds).sort((a, b) => {
       const aHas = groupedByProject.has(a) ? 0 : 1;
       const bHas = groupedByProject.has(b) ? 0 : 1;
@@ -318,21 +314,151 @@ export default function TodoList() {
   const completedTodoCount = todos.filter(t => t.completed).length;
 
   return (
-    <div className={`todo-page ${showPhrases ? 'todo-page-with-phrases' : ''}`}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="todo-page">
+      <div className="page-header">
         <div>
           <h2>To-Do List</h2>
           <p className="page-desc">프로젝트별 할 일 관리</p>
         </div>
-        <button
-          className={`btn btn-sm ${showPhrases ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setShowPhrases(!showPhrases)}
-        >
-          {showPhrases ? '문구 패널 닫기' : '자주 쓰는 문구'}
-        </button>
       </div>
 
-      {/* Top bar: tabs, search, filters */}
+      {/* ===== Quick Phrases - Top Full Width Section ===== */}
+      <div className="phrases-top-section">
+        <div className="phrases-top-header">
+          <div className="phrases-top-title-row">
+            <h3>자주 쓰는 문구</h3>
+            <span className="phrases-top-count">{phrases.length}개</span>
+          </div>
+          <div className="phrases-top-actions">
+            <button
+              className="btn btn-sm btn-secondary"
+              onClick={() => setShowPhrases(!showPhrases)}
+            >
+              {showPhrases ? '접기' : '펼치기'}
+            </button>
+            {showPhrases && (
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => { setShowPhraseForm(true); setEditingPhrase(null); setPhraseForm({ title: '', content: '', category: '일반' }); }}
+              >
+                + 새 문구
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showPhrases && (
+          <>
+            {/* Phrase Add/Edit Form */}
+            {showPhraseForm && (
+              <div className="phrases-top-form">
+                <div className="phrases-top-form-grid">
+                  <div className="phrases-top-form-left">
+                    <input
+                      type="text"
+                      placeholder="문구 제목 (예: 인사말, 견적 요청)"
+                      value={phraseForm.title}
+                      onChange={e => setPhraseForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="phrases-top-input"
+                      autoFocus
+                    />
+                    <div className="phrases-top-form-meta">
+                      <select
+                        value={phraseForm.category}
+                        onChange={e => setPhraseForm(prev => ({ ...prev, category: e.target.value }))}
+                        className="phrases-top-select"
+                      >
+                        {PHRASE_CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      <div className="phrases-top-form-btns">
+                        <button className="btn btn-sm btn-primary" onClick={handlePhraseSubmit}>
+                          {editingPhrase ? '수정 완료' : '저장'}
+                        </button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setShowPhraseForm(false); setEditingPhrase(null); }}>취소</button>
+                      </div>
+                    </div>
+                  </div>
+                  <textarea
+                    placeholder="문구 내용을 입력하세요..."
+                    value={phraseForm.content}
+                    onChange={e => setPhraseForm(prev => ({ ...prev, content: e.target.value }))}
+                    className="phrases-top-textarea"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            {phrases.length > 0 && (
+              <div className="phrases-top-filters">
+                <div className="phrases-top-search">
+                  <input
+                    type="text"
+                    placeholder="문구 검색..."
+                    value={phraseSearch}
+                    onChange={e => setPhraseSearch(e.target.value)}
+                  />
+                  {phraseSearch && (
+                    <button className="phrases-search-clear" onClick={() => setPhraseSearch('')}>×</button>
+                  )}
+                </div>
+                <div className="phrases-top-cat-pills">
+                  <button
+                    className={`phrases-cat-pill ${phraseFilterCat === 'all' ? 'active' : ''}`}
+                    onClick={() => setPhraseFilterCat('all')}
+                  >
+                    전체
+                  </button>
+                  {PHRASE_CATEGORIES.map(c => (
+                    <button
+                      key={c}
+                      className={`phrases-cat-pill ${phraseFilterCat === c ? 'active' : ''}`}
+                      onClick={() => setPhraseFilterCat(c)}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Phrase Cards */}
+            <div className="phrases-top-grid">
+              {filteredPhrases.length === 0 && (
+                <div className="phrases-top-empty">
+                  {phrases.length === 0
+                    ? '저장된 문구가 없습니다. "새 문구" 버튼을 눌러 추가해보세요.'
+                    : '검색 결과가 없습니다.'}
+                </div>
+              )}
+              {filteredPhrases.map(p => (
+                <div key={p.id} className="phrases-top-card">
+                  <div className="phrases-top-card-header">
+                    <span className="phrases-top-card-title">{p.title}</span>
+                    <span className="phrases-top-card-cat">{p.category}</span>
+                  </div>
+                  <div className="phrases-top-card-content">{p.content}</div>
+                  <div className="phrases-top-card-actions">
+                    <button
+                      className={`btn btn-sm ${copiedId === p.id ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleCopyPhrase(p)}
+                    >
+                      {copiedId === p.id ? '복사됨!' : '복사'}
+                    </button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => startEditPhrase(p)}>수정</button>
+                    <button className="btn btn-sm btn-ghost phrases-top-delete" onClick={() => { if (confirm('이 문구를 삭제하시겠습니까?')) deletePhrase(p.id); }}>삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ===== Todo Section ===== */}
       <div className="todo-toolbar">
         <div className="todo-tabs">
           <button
@@ -596,100 +722,6 @@ export default function TodoList() {
           );
         })()}
       </div>
-
-      {/* Quick Phrases Side Panel */}
-      {showPhrases && (
-        <div className="phrases-panel">
-          <div className="phrases-panel-header">
-            <h3>자주 쓰는 문구</h3>
-            <button className="btn btn-sm btn-primary" onClick={() => { setShowPhraseForm(true); setEditingPhrase(null); setPhraseForm({ title: '', content: '', category: '일반' }); }}>
-              + 추가
-            </button>
-          </div>
-
-          <div className="phrases-panel-filters">
-            <input
-              type="text"
-              placeholder="문구 검색..."
-              value={phraseSearch}
-              onChange={e => setPhraseSearch(e.target.value)}
-              className="todo-search-input"
-            />
-            <select
-              value={phraseFilterCat}
-              onChange={e => setPhraseFilterCat(e.target.value)}
-              className="todo-filter-select"
-            >
-              <option value="all">전체</option>
-              {PHRASE_CATEGORIES.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          {showPhraseForm && (
-            <div className="phrases-form">
-              <input
-                type="text"
-                placeholder="문구 제목 (예: 견적 요청)"
-                value={phraseForm.title}
-                onChange={e => setPhraseForm(prev => ({ ...prev, title: e.target.value }))}
-                className="todo-form-input"
-                autoFocus
-              />
-              <textarea
-                placeholder="문구 내용을 입력하세요..."
-                value={phraseForm.content}
-                onChange={e => setPhraseForm(prev => ({ ...prev, content: e.target.value }))}
-                className="todo-form-textarea"
-                rows={4}
-              />
-              <div className="phrases-form-bottom">
-                <select
-                  value={phraseForm.category}
-                  onChange={e => setPhraseForm(prev => ({ ...prev, category: e.target.value }))}
-                  className="todo-form-select"
-                >
-                  {PHRASE_CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <div className="todo-form-actions">
-                  <button className="btn btn-sm btn-primary" onClick={handlePhraseSubmit}>
-                    {editingPhrase ? '수정' : '저장'}
-                  </button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => { setShowPhraseForm(false); setEditingPhrase(null); }}>취소</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="phrases-list">
-            {filteredPhrases.length === 0 && (
-              <div className="todo-empty">저장된 문구가 없습니다</div>
-            )}
-            {filteredPhrases.map(p => (
-              <div key={p.id} className="phrase-card">
-                <div className="phrase-card-top">
-                  <span className="phrase-title">{p.title}</span>
-                  <span className="phrase-cat-badge">{p.category}</span>
-                </div>
-                <div className="phrase-content">{p.content}</div>
-                <div className="phrase-card-actions">
-                  <button
-                    className={`btn btn-sm ${copiedId === p.id ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => handleCopyPhrase(p)}
-                  >
-                    {copiedId === p.id ? '복사됨!' : '복사'}
-                  </button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => startEditPhrase(p)}>수정</button>
-                  <button className="btn btn-sm btn-ghost todo-delete-btn" onClick={() => deletePhrase(p.id)}>삭제</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
