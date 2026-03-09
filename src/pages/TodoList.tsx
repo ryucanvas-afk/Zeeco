@@ -42,7 +42,7 @@ type ViewTab = 'active' | 'completed';
 type ViewMode = 'list' | 'calendar';
 
 export default function TodoList() {
-  const { todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory } = useTodos();
+  const { todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory, projectOrder, reorderProjectCards } = useTodos();
   const { projects } = useProjects();
   const visibleProjects = projects.filter(p => !p.hidden);
 
@@ -139,10 +139,14 @@ export default function TodoList() {
     }
   };
 
-  // Drag state
+  // Drag state for todo items
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverItem, setDragOverItem] = useState<string | null>(null);
   const dragProjectId = useRef<string | null>(null);
+
+  // Drag state for project cards
+  const [dragProjectCard, setDragProjectCard] = useState<string | null>(null);
+  const dragOverProjectCard = useRef<string | null>(null);
 
   // Filter todos
   const filteredTodos = useMemo(() => {
@@ -305,6 +309,35 @@ export default function TodoList() {
     setDragOverItem(null);
   };
 
+  // Project card drag handlers
+  const handleProjectCardDragStart = (projectId: string) => {
+    if (projectId === COMMON_PROJECT_ID) return;
+    setDragProjectCard(projectId);
+  };
+
+  const handleProjectCardDragOver = (e: React.DragEvent, projectId: string) => {
+    e.preventDefault();
+    if (projectId === COMMON_PROJECT_ID) return;
+    dragOverProjectCard.current = projectId;
+  };
+
+  const handleProjectCardDrop = () => {
+    if (!dragProjectCard || !dragOverProjectCard.current || dragProjectCard === dragOverProjectCard.current) {
+      setDragProjectCard(null);
+      dragOverProjectCard.current = null;
+      return;
+    }
+    const nonCommon = projectIdsToShow.filter(id => id !== COMMON_PROJECT_ID);
+    const fromIdx = nonCommon.indexOf(dragProjectCard);
+    const toIdx = nonCommon.indexOf(dragOverProjectCard.current);
+    if (fromIdx === -1 || toIdx === -1) return;
+    nonCommon.splice(fromIdx, 1);
+    nonCommon.splice(toIdx, 0, dragProjectCard);
+    reorderProjectCards(nonCommon);
+    setDragProjectCard(null);
+    dragOverProjectCard.current = null;
+  };
+
   const getDueDateDisplay = (todo: TodoItem) => {
     if (todo.dueDateTBD) return <span className="todo-due-tbd">TBD</span>;
     if (!todo.dueDate) return null;
@@ -341,14 +374,31 @@ export default function TodoList() {
   const projectIdsToShow = useMemo(() => {
     const idsWithTodos = Array.from(groupedByProject.keys());
     const allIds = new Set([COMMON_PROJECT_ID, ...visibleProjects.map(p => p.id), ...idsWithTodos]);
-    const sorted = Array.from(allIds).filter(id => id !== COMMON_PROJECT_ID).sort((a, b) => {
-      const aHas = groupedByProject.has(a) ? 0 : 1;
-      const bHas = groupedByProject.has(b) ? 0 : 1;
-      if (aHas !== bHas) return aHas - bHas;
-      return getProjectName(a).localeCompare(getProjectName(b));
-    });
-    return [COMMON_PROJECT_ID, ...sorted];
-  }, [groupedByProject, visibleProjects]);
+    const nonCommon = Array.from(allIds).filter(id => id !== COMMON_PROJECT_ID);
+
+    // Apply saved order if available
+    if (projectOrder.length > 0) {
+      const orderMap = new Map(projectOrder.map((id, idx) => [id, idx]));
+      nonCommon.sort((a, b) => {
+        const aIdx = orderMap.has(a) ? orderMap.get(a)! : 9999;
+        const bIdx = orderMap.has(b) ? orderMap.get(b)! : 9999;
+        if (aIdx !== bIdx) return aIdx - bIdx;
+        // fallback: items with todos first
+        const aHas = groupedByProject.has(a) ? 0 : 1;
+        const bHas = groupedByProject.has(b) ? 0 : 1;
+        if (aHas !== bHas) return aHas - bHas;
+        return getProjectName(a).localeCompare(getProjectName(b));
+      });
+    } else {
+      nonCommon.sort((a, b) => {
+        const aHas = groupedByProject.has(a) ? 0 : 1;
+        const bHas = groupedByProject.has(b) ? 0 : 1;
+        if (aHas !== bHas) return aHas - bHas;
+        return getProjectName(a).localeCompare(getProjectName(b));
+      });
+    }
+    return [COMMON_PROJECT_ID, ...nonCommon];
+  }, [groupedByProject, visibleProjects, projectOrder]);
 
   // Calendar helpers
   const todosWithDueDate = useMemo(() => {
@@ -656,7 +706,16 @@ export default function TodoList() {
           const projectColor = getProjectColor(projectId);
 
           return (
-            <div key={projectId} className={`todo-project-card ${projectId === COMMON_PROJECT_ID ? 'todo-project-card-common' : ''}`} style={{ borderTopColor: projectColor }}>
+            <div
+              key={projectId}
+              className={`todo-project-card ${projectId === COMMON_PROJECT_ID ? 'todo-project-card-common' : ''} ${dragProjectCard === projectId ? 'todo-project-card-dragging' : ''}`}
+              style={{ borderTopColor: projectColor }}
+              draggable={projectId !== COMMON_PROJECT_ID}
+              onDragStart={() => handleProjectCardDragStart(projectId)}
+              onDragOver={e => handleProjectCardDragOver(e, projectId)}
+              onDrop={e => { e.preventDefault(); handleProjectCardDrop(); }}
+              onDragEnd={() => { setDragProjectCard(null); dragOverProjectCard.current = null; }}
+            >
               <div className="todo-project-card-header">
                 <div className="todo-project-card-title">
                   <span className="todo-project-dot" style={{ background: projectColor }} />

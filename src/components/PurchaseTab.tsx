@@ -174,23 +174,23 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
     <div className="purchase-tab">
       {/* Summary */}
       <div className="summary-cards">
-        <div className="summary-card">
+        <div className="summary-card summary-card-clickable" onClick={() => { setActiveSubTab('all'); resetFilters(); }}>
           <div className="summary-value">{allPurchases.length}</div>
           <div className="summary-label">전체 발주</div>
         </div>
-        <div className="summary-card card-pending">
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('rfq_writing'); }}>
           <div className="summary-value">{statusSummary.rfq}</div>
           <div className="summary-label">RFQ 작성 중</div>
         </div>
-        <div className="summary-card card-ordered">
+        <div className="summary-card card-ordered summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('po_completed'); }}>
           <div className="summary-value">{statusSummary.ordered}</div>
           <div className="summary-label">발주 완료</div>
         </div>
-        <div className="summary-card card-shipped">
+        <div className="summary-card card-shipped summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('manufacturing'); }}>
           <div className="summary-value">{statusSummary.manufacturing}</div>
           <div className="summary-label">제작 중</div>
         </div>
-        <div className="summary-card card-delivered">
+        <div className="summary-card card-delivered summary-card-clickable" onClick={() => { setActiveSubTab('delivered'); resetFilters(); }}>
           <div className="summary-value">{statusSummary.delivered}</div>
           <div className="summary-label">납품 완료</div>
         </div>
