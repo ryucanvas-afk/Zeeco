@@ -317,7 +317,9 @@ export default function ProjectDetail() {
                               ) : (
                                 <span className="date-with-tbd">
                                   <EditableCell value={item.requiredDeliveryDate || ''} type="date" onSave={v => updateItem(project.id, item.id, { requiredDeliveryDate: v })} />
-                                  <button className="btn-tbd" onClick={e => { e.stopPropagation(); updateItem(project.id, item.id, { requiredDeliveryTBD: true, requiredDeliveryDate: '' }); }} title="TBD로 변경">TBD</button>
+                                  {!item.requiredDeliveryDate && (
+                                    <button className="btn-tbd" onClick={e => { e.stopPropagation(); updateItem(project.id, item.id, { requiredDeliveryTBD: true, requiredDeliveryDate: '' }); }} title="TBD로 변경">TBD</button>
+                                  )}
                                 </span>
                               )}
                             </td>

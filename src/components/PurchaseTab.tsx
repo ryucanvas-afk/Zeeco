@@ -70,6 +70,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const [dragId, setDragId] = useState<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'in_progress' | 'delivered'>('in_progress');
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
 
   // Filter states
   const [filterItem, setFilterItem] = useState<string>('all');
@@ -376,54 +377,73 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
           )}
         </div>
 
-        <p className="edit-hint">카드를 클릭하여 직접 수정 / 드래그로 순서 변경 가능</p>
+        <p className="edit-hint">항목을 클릭하면 우측에 세부 내용이 표시됩니다</p>
 
-        {/* Purchase Cards */}
-        <div className="purchase-cards">
-          {displayedPurchases.map(purchase => (
-            <div
-              key={purchase.id}
-              className={`purchase-card ${dragId === purchase.id ? 'purchase-card-dragging' : ''}`}
-              data-status={purchase.status}
-              style={{ borderLeft: `4px solid ${purchase.itemColor}` }}
-              draggable
-              onDragStart={() => handleDragStart(purchase.id)}
-              onDragOver={e => handleDragOver(e, purchase.id)}
-              onDrop={handleDrop}
-              onDragEnd={() => setDragId(null)}
-            >
-              <div className="purchase-card-header">
-                <div className="purchase-order-num">
-                  <EditableCell
-                    value={purchase.orderNumber || ''}
-                    onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderNumber', v)}
-                    placeholder="발주번호"
-                  />
+        {/* List + Detail Layout */}
+        <div className="purchase-layout">
+          {/* Left: Purchase List */}
+          <div className="purchase-list-panel">
+            {displayedPurchases.map(purchase => {
+              const statusLabel = purchaseStatusOptions.find(s => s.value === purchase.status)?.label || purchase.status;
+              const isSelected = selectedPurchaseId === purchase.id;
+              return (
+                <div
+                  key={purchase.id}
+                  className={`purchase-list-item ${isSelected ? 'purchase-list-item-active' : ''} ${dragId === purchase.id ? 'purchase-card-dragging' : ''}`}
+                  style={{ borderLeft: `4px solid ${purchase.itemColor}` }}
+                  onClick={() => setSelectedPurchaseId(purchase.id)}
+                  draggable
+                  onDragStart={() => handleDragStart(purchase.id)}
+                  onDragOver={e => handleDragOver(e, purchase.id)}
+                  onDrop={handleDrop}
+                  onDragEnd={() => setDragId(null)}
+                >
+                  <div className="purchase-list-item-top">
+                    <span className="purchase-list-ordernum">{purchase.orderNumber || '-'}</span>
+                    <span className="purchase-list-name">{purchase.partName || '부품명 없음'}</span>
+                    <span className={`purchase-list-status purchase-status-${purchase.status}`}>{statusLabel}</span>
+                  </div>
+                  <div className="purchase-list-item-bottom">
+                    <span className="purchase-list-supplier">{purchase.supplier || '-'}</span>
+                    <span className="purchase-list-amount">{purchase.orderAmount ? `${formatNumber(purchase.orderAmount)} ${purchase.currency}` : '-'}</span>
+                  </div>
+                  <button className="purchase-list-delete" onClick={e => { e.stopPropagation(); deletePurchase(project.id, purchase.parentItemId, purchase.id); if (selectedPurchaseId === purchase.id) setSelectedPurchaseId(null); }} title="삭제">×</button>
                 </div>
-                <div className="purchase-name-status">
-                  <EditableCell
-                    value={purchase.partName}
-                    onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'partName', v)}
-                  />
-                  <EditableCell value={purchase.status} type="select" options={purchaseStatusOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'status', v)} />
-                </div>
-                <button className="btn-icon btn-danger" onClick={() => deletePurchase(project.id, purchase.parentItemId, purchase.id)} title="삭제">✕</button>
-              </div>
+              );
+            })}
+            {displayedPurchases.length === 0 && (
+              <p className="empty-message">{activeSubTab === 'in_progress' ? '진행 중인 발주가 없습니다.' : '납품 완료된 발주가 없습니다.'}</p>
+            )}
+          </div>
 
-              <div className="purchase-card-body">
-                <div className="purchase-card-main">
-                  <span className="purchase-card-spec">
-                    <EditableCell
-                      value={purchase.specification}
-                      onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'specification', v)}
-                      placeholder="사양"
-                    />
-                  </span>
+          {/* Right: Detail Panel */}
+          <div className="purchase-detail-panel">
+            {(() => {
+              const purchase = displayedPurchases.find(p => p.id === selectedPurchaseId);
+              if (!purchase) return (
+                <div className="purchase-detail-placeholder">
+                  <div className="purchase-detail-placeholder-icon">&#128230;</div>
+                  <p>좌측 목록에서 발주를 선택하면<br />세부 내용이 여기에 표시됩니다.</p>
                 </div>
+              );
+              return (
+                <div className="purchase-detail-content">
+                  <div className="purchase-detail-header">
+                    <h4>{purchase.partName || '부품명 없음'}</h4>
+                    <EditableCell value={purchase.status} type="select" options={purchaseStatusOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'status', v)} />
+                  </div>
 
-                <div className="purchase-card-grid-2col">
-                  <div className="pc-row">
-                    <div className="pc-field"><label>품목</label>
+                  <div className="purchase-detail-grid">
+                    <div className="pd-field"><label>발주번호</label>
+                      <EditableCell value={purchase.orderNumber || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderNumber', v)} placeholder="-" />
+                    </div>
+                    <div className="pd-field"><label>부품명</label>
+                      <EditableCell value={purchase.partName} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'partName', v)} />
+                    </div>
+                    <div className="pd-field"><label>사양</label>
+                      <EditableCell value={purchase.specification} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'specification', v)} placeholder="-" />
+                    </div>
+                    <div className="pd-field"><label>품목</label>
                       <EditableCell value={purchase.parentItemId} type="select" options={itemOptions(project)}
                         onSave={v => {
                           if (v !== purchase.parentItemId) {
@@ -440,61 +460,47 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                               currency: pd.currency, termsOfPayment: pd.termsOfPayment, scopeOfSupply: pd.scopeOfSupply,
                               notes: pd.notes, sortOrder: pd.sortOrder,
                             });
+                            setSelectedPurchaseId(null);
                           }
                         }}
                       />
                     </div>
-                    <div className="pc-field"><label>공급업체</label>
+                    <div className="pd-field"><label>공급업체</label>
                       <EditableCell value={purchase.supplier} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'supplier', v)} placeholder="-" />
                     </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field"><label>담당 팀</label>
+                    <div className="pd-field"><label>담당 팀</label>
                       <EditableCell value={purchase.team || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'team', v)} placeholder="-" />
                     </div>
-                    <div className="pc-field"><label>수량</label>
+                    <div className="pd-field"><label>수량</label>
                       <EditableCell value={String(purchase.quantity)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'quantity', Number(v))} />
                     </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field"><label>단위</label>
+                    <div className="pd-field"><label>단위</label>
                       <EditableCell value={purchase.unit} type="select" options={unitOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'unit', v)} />
                     </div>
-                    <div className="pc-field"><label>통화</label>
+                    <div className="pd-field"><label>통화</label>
                       <EditableCell value={purchase.currency} type="select" options={currencyOptions} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'currency', v)} />
                     </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field"><label>발주 금액</label>
+                    <div className="pd-field"><label>발주 금액</label>
                       <span className="td-cost">{formatNumber(purchase.orderAmount || 0)} {purchase.currency}</span>
                       <EditableCell value={String(purchase.orderAmount || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderAmount', Number(v))} />
                     </div>
-                    <div className="pc-field"><label>VAT</label>
+                    <div className="pd-field"><label>VAT</label>
                       <span className="td-cost">{formatNumber(purchase.vat || 0)} {purchase.currency}</span>
                       <EditableCell value={String(purchase.vat || 0)} type="number" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'vat', Number(v))} />
                     </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field"><label>발주일</label>
+                    <div className="pd-field"><label>발주일</label>
                       <EditableCell value={purchase.orderDate} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'orderDate', v)} />
                     </div>
-                    <div className="pc-field"><label>납기 예정</label>
+                    <div className="pd-field"><label>납기 예정</label>
                       <EditableCell value={purchase.expectedDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'expectedDelivery', v)} />
                     </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field"><label>입고일</label>
+                    <div className="pd-field"><label>입고일</label>
                       <EditableCell value={purchase.actualDelivery} type="date" onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'actualDelivery', v)} />
                     </div>
-                    <div className="pc-field"></div>
-                  </div>
-                  <div className="pc-row pc-row-full">
-                    <div className="pc-field pc-field-full"><label>Terms of Payment</label>
+                    <div className="pd-field pd-field-full"><label>Terms of Payment</label>
                       <EditableCell value={purchase.termsOfPayment || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'termsOfPayment', v)} placeholder="-" />
                     </div>
-                  </div>
-                  <div className="pc-row pc-row-full">
-                    <div className="pc-field pc-field-full"><label>Scope of Supply</label>
+                    <div className="pd-field pd-field-full"><label>Scope of Supply</label>
                       <div className="scope-list">
                         {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).map((item, idx) => (
                           <div key={idx} className="scope-list-item">
@@ -520,19 +526,14 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                         }}>+ 항목 추가</button>
                       </div>
                     </div>
-                  </div>
-                  <div className="pc-row pc-row-full">
-                    <div className="pc-field pc-field-full"><label>비고</label>
+                    <div className="pd-field pd-field-full"><label>비고</label>
                       <EditableCell value={purchase.notes} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'notes', v)} placeholder="메모" />
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-          {displayedPurchases.length === 0 && (
-            <p className="empty-message">{activeSubTab === 'in_progress' ? '진행 중인 발주가 없습니다.' : '납품 완료된 발주가 없습니다.'}</p>
-          )}
+              );
+            })()}
+          </div>
         </div>
       </div>
     </div>

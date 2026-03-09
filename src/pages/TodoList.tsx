@@ -97,11 +97,12 @@ export default function TodoList() {
   }, [phrases, phraseFilterCat, phraseSearch]);
 
   const handlePhraseSubmit = () => {
-    if (!phraseForm.title.trim() || !phraseForm.content.trim()) return;
+    if (!phraseForm.content.trim()) return;
+    const title = phraseForm.title.trim() || phraseForm.content.trim().slice(0, 30);
     if (editingPhrase) {
-      updatePhrase(editingPhrase, { title: phraseForm.title, content: phraseForm.content, category: phraseForm.category });
+      updatePhrase(editingPhrase, { title, content: phraseForm.content, category: phraseForm.category });
     } else {
-      addPhrase({ title: phraseForm.title, content: phraseForm.content, category: phraseForm.category });
+      addPhrase({ title, content: phraseForm.content, category: phraseForm.category });
     }
     setPhraseForm({ title: '', content: '', category: '일반' });
     setShowPhraseForm(false);
@@ -110,7 +111,7 @@ export default function TodoList() {
 
   const startEditPhrase = (p: QuickPhrase) => {
     setEditingPhrase(p.id);
-    setPhraseForm({ title: p.title, content: p.content, category: p.category });
+    setPhraseForm({ title: '', content: p.content, category: p.category });
     setShowPhraseForm(true);
   };
 
@@ -310,13 +311,17 @@ export default function TodoList() {
     return <span className={className}>{todo.dueDate} ({label})</span>;
   };
 
+  const COMMON_PROJECT_ID = '__common__';
+
   const getProjectName = (projectId: string) => {
+    if (projectId === COMMON_PROJECT_ID) return '공통 사항';
     if (!projectId) return '프로젝트 미지정';
     const p = projects.find(p => p.id === projectId);
     return p ? `${p.projectNo ? p.projectNo + ' - ' : ''}${p.name}` : '삭제된 프로젝트';
   };
 
   const getProjectColor = (projectId: string) => {
+    if (projectId === COMMON_PROJECT_ID) return '#6366f1';
     const p = projects.find(p => p.id === projectId);
     return p?.color || '#475569';
   };
@@ -324,13 +329,14 @@ export default function TodoList() {
   // Which projects to show cards for
   const projectIdsToShow = useMemo(() => {
     const idsWithTodos = Array.from(groupedByProject.keys());
-    const allIds = new Set([...visibleProjects.map(p => p.id), ...idsWithTodos]);
-    return Array.from(allIds).sort((a, b) => {
+    const allIds = new Set([COMMON_PROJECT_ID, ...visibleProjects.map(p => p.id), ...idsWithTodos]);
+    const sorted = Array.from(allIds).filter(id => id !== COMMON_PROJECT_ID).sort((a, b) => {
       const aHas = groupedByProject.has(a) ? 0 : 1;
       const bHas = groupedByProject.has(b) ? 0 : 1;
       if (aHas !== bHas) return aHas - bHas;
       return getProjectName(a).localeCompare(getProjectName(b));
     });
+    return [COMMON_PROJECT_ID, ...sorted];
   }, [groupedByProject, visibleProjects]);
 
   const activeTodoCount = todos.filter(t => !t.completed).length;
@@ -375,41 +381,29 @@ export default function TodoList() {
             {/* Phrase Add/Edit Form */}
             {showPhraseForm && (
               <div className="phrases-top-form">
-                <div className="phrases-top-form-grid">
-                  <div className="phrases-top-form-left">
-                    <input
-                      type="text"
-                      placeholder="문구 제목 (예: 인사말, 견적 요청)"
-                      value={phraseForm.title}
-                      onChange={e => setPhraseForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="phrases-top-input"
-                      autoFocus
-                    />
-                    <div className="phrases-top-form-meta">
-                      <select
-                        value={phraseForm.category}
-                        onChange={e => setPhraseForm(prev => ({ ...prev, category: e.target.value }))}
-                        className="phrases-top-select"
-                      >
-                        {PHRASE_CATEGORIES.map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      <div className="phrases-top-form-btns">
-                        <button className="btn btn-sm btn-primary" onClick={handlePhraseSubmit}>
-                          {editingPhrase ? '수정 완료' : '저장'}
-                        </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => { setShowPhraseForm(false); setEditingPhrase(null); }}>취소</button>
-                      </div>
-                    </div>
-                  </div>
-                  <textarea
-                    placeholder="문구 내용을 입력하세요..."
+                <div className="phrases-simple-form">
+                  <input
+                    type="text"
+                    placeholder="문구를 입력하세요..."
                     value={phraseForm.content}
                     onChange={e => setPhraseForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="phrases-top-textarea"
-                    rows={4}
+                    className="phrases-top-input phrases-simple-input"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handlePhraseSubmit(); } }}
                   />
+                  <select
+                    value={phraseForm.category}
+                    onChange={e => setPhraseForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="phrases-top-select"
+                  >
+                    {PHRASE_CATEGORIES.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-sm btn-primary" onClick={handlePhraseSubmit}>
+                    {editingPhrase ? '수정' : '저장'}
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={() => { setShowPhraseForm(false); setEditingPhrase(null); }}>취소</button>
                 </div>
               </div>
             )}
@@ -458,21 +452,20 @@ export default function TodoList() {
                 </div>
               )}
               {filteredPhrases.map(p => (
-                <div key={p.id} className="phrases-top-card">
-                  <div className="phrases-top-card-header">
-                    <span className="phrases-top-card-title">{p.title}</span>
+                <div key={p.id} className="phrases-top-card phrases-simple-card">
+                  <div className="phrases-simple-content">{p.content}</div>
+                  <div className="phrases-simple-footer">
                     <span className="phrases-top-card-cat">{p.category}</span>
-                  </div>
-                  <div className="phrases-top-card-content">{p.content}</div>
-                  <div className="phrases-top-card-actions">
-                    <button
-                      className={`btn btn-sm ${copiedId === p.id ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => handleCopyPhrase(p)}
-                    >
-                      {copiedId === p.id ? '복사됨!' : '복사'}
-                    </button>
-                    <button className="btn btn-sm btn-ghost" onClick={() => startEditPhrase(p)}>수정</button>
-                    <button className="btn btn-sm btn-ghost phrases-top-delete" onClick={() => { if (confirm('이 문구를 삭제하시겠습니까?')) deletePhrase(p.id); }}>삭제</button>
+                    <div className="phrases-top-card-actions">
+                      <button
+                        className={`btn btn-sm ${copiedId === p.id ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => handleCopyPhrase(p)}
+                      >
+                        {copiedId === p.id ? '복사됨!' : '복사'}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => startEditPhrase(p)}>수정</button>
+                      <button className="btn btn-sm btn-ghost phrases-top-delete" onClick={() => { if (confirm('이 문구를 삭제하시겠습니까?')) deletePhrase(p.id); }}>삭제</button>
+                    </div>
                   </div>
                 </div>
               ))}
