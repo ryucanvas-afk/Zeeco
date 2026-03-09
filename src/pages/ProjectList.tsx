@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import { ProjectStatusBadge } from '../components/StatusBadge';
@@ -10,11 +10,13 @@ function formatNumber(n: number): string {
 }
 
 export default function ProjectList() {
-  const { projects, addProject, deleteProject, toggleHideProject } = useProjects();
+  const { projects, addProject, deleteProject, toggleHideProject, reorderProjects } = useProjects();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | 'all'>('all');
   const [showHidden, setShowHidden] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dragOverRef = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -57,6 +59,47 @@ export default function ProjectList() {
       directCost: 0, contingency: 0, needsFactoryManagement: false,
     });
     setShowForm(false);
+  };
+
+  const handleDragStart = (projectId: string) => {
+    setDragId(projectId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, projectId: string) => {
+    e.preventDefault();
+    dragOverRef.current = projectId;
+  };
+
+  const handleDrop = () => {
+    if (!dragId || !dragOverRef.current || dragId === dragOverRef.current) {
+      setDragId(null);
+      dragOverRef.current = null;
+      return;
+    }
+    const ids = filtered.map(p => p.id);
+    const fromIdx = ids.indexOf(dragId);
+    const toIdx = ids.indexOf(dragOverRef.current);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, dragId);
+    // Get full project list order (replace filtered portion)
+    const filteredSet = new Set(filtered.map(p => p.id));
+    const result: string[] = [];
+    let inserted = false;
+    for (const p of projects) {
+      if (filteredSet.has(p.id)) {
+        if (!inserted) {
+          result.push(...ids);
+          inserted = true;
+        }
+      } else {
+        result.push(p.id);
+      }
+    }
+    if (!inserted) result.push(...ids);
+    reorderProjects(result);
+    setDragId(null);
+    dragOverRef.current = null;
   };
 
   return (
@@ -144,9 +187,14 @@ export default function ProjectList() {
           return (
             <div
               key={project.id}
-              className={`project-card ${project.hidden ? 'project-card-hidden' : ''}`}
+              className={`project-card ${project.hidden ? 'project-card-hidden' : ''} ${dragId === project.id ? 'project-card-dragging' : ''}`}
               style={{ borderTop: `3px solid ${project.color || '#3b82f6'}` }}
               onClick={() => navigate(`/project/${project.id}`)}
+              draggable
+              onDragStart={(e) => { e.stopPropagation(); handleDragStart(project.id); }}
+              onDragOver={(e) => handleDragOver(e, project.id)}
+              onDrop={(e) => { e.preventDefault(); handleDrop(); }}
+              onDragEnd={() => { setDragId(null); dragOverRef.current = null; }}
             >
               <div className="project-card-header">
                 <div>

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import MindMap from '../components/MindMap';
 import { ProjectStatusBadge } from '../components/StatusBadge';
@@ -8,6 +10,8 @@ function dateToStr(d: Date): string {
 
 export default function Dashboard() {
   const { projects } = useProjects();
+  const navigate = useNavigate();
+  const [showProjectList, setShowProjectList] = useState(false);
 
   const visibleProjects = projects.filter(p => !p.hidden);
   const totalItems = visibleProjects.reduce((sum, p) => sum + p.items.length, 0);
@@ -40,9 +44,13 @@ export default function Dashboard() {
 
       {/* Summary */}
       <div className="summary-cards">
-        <div className="summary-card">
+        <div
+          className="summary-card summary-card-clickable"
+          onClick={() => setShowProjectList(!showProjectList)}
+          title="클릭하여 프로젝트 목록 보기"
+        >
           <div className="summary-value">{visibleProjects.length}</div>
-          <div className="summary-label">전체 프로젝트</div>
+          <div className="summary-label">전체 프로젝트 ▾</div>
         </div>
         <div className="summary-card card-ordered">
           <div className="summary-value">{inProgressProjects}</div>
@@ -61,6 +69,46 @@ export default function Dashboard() {
           <div className="summary-label">미입고 발주</div>
         </div>
       </div>
+
+      {/* Project List Dropdown */}
+      {showProjectList && (
+        <div className="section-card dashboard-project-list">
+          <h3 className="section-title">프로젝트 목록</h3>
+          <div className="dashboard-project-items">
+            {visibleProjects.map(project => {
+              const items = project.items.length;
+              const done = project.items.filter(i => i.status === 'completed').length;
+              const progress = items > 0 ? Math.round((done / items) * 100) : 0;
+              return (
+                <div
+                  key={project.id}
+                  className="dashboard-project-item"
+                  style={{ borderLeft: `4px solid ${project.color || '#3b82f6'}` }}
+                  onClick={() => navigate(`/project/${project.id}`)}
+                >
+                  <div className="dashboard-project-item-info">
+                    <span className="dashboard-project-item-name">{project.name}</span>
+                    {project.projectNo && <span className="dashboard-project-item-no">{project.projectNo}</span>}
+                    <span className="dashboard-project-item-client">{project.client}</span>
+                  </div>
+                  <div className="dashboard-project-item-right">
+                    <ProjectStatusBadge status={project.status} />
+                    <div className="progress-cell" style={{ minWidth: 80 }}>
+                      <div className="progress-bar-bg">
+                        <div
+                          className="progress-bar-fill"
+                          style={{ width: `${progress}%`, backgroundColor: progress === 100 ? '#10b981' : project.color || '#3b82f6' }}
+                        />
+                      </div>
+                      <span>{progress}%</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Mind Map */}
       <div className="section-card">
@@ -101,7 +149,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Activity */}
+      {/* Project Status Summary */}
       <div className="section-card">
         <h3 className="section-title">프로젝트 현황 요약</h3>
         <div className="table-wrapper">
@@ -122,7 +170,12 @@ export default function Dashboard() {
                 const done = project.items.filter(i => i.status === 'completed').length;
                 const progress = items > 0 ? Math.round((done / items) * 100) : 0;
                 return (
-                  <tr key={project.id}>
+                  <tr
+                    key={project.id}
+                    className="dashboard-summary-row"
+                    onClick={() => navigate(`/project/${project.id}`)}
+                    title="클릭하여 프로젝트로 이동"
+                  >
                     <td className="td-bold">{project.name}</td>
                     <td>{project.client}</td>
                     <td><ProjectStatusBadge status={project.status} /></td>

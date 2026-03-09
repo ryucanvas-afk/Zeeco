@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from '../components/EditableCell';
@@ -65,12 +65,14 @@ function formatNumber(n: number): string {
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, updateProject, addItem, updateItem, deleteItem, addSubItem, updateSubItem, deleteSubItem } = useProjects();
+  const { projects, updateProject, addItem, updateItem, deleteItem, addSubItem, updateSubItem, deleteSubItem, reorderItems } = useProjects();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showAddItem, setShowAddItem] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showAddSubItem, setShowAddSubItem] = useState<string | null>(null);
   const [colorPickerItemId, setColorPickerItemId] = useState<string | null>(null);
+  const [dragItemId, setDragItemId] = useState<string | null>(null);
+  const dragOverItemRef = useRef<string | null>(null);
   const [subItemForm, setSubItemForm] = useState({ name: '', specification: '', quantity: 0, unit: 'EA', notes: '' });
   const [itemForm, setItemForm] = useState({
     name: '',
@@ -112,6 +114,32 @@ export default function ProjectDetail() {
     addSubItem(project.id, itemId, subItemForm);
     setSubItemForm({ name: '', specification: '', quantity: 0, unit: 'EA', notes: '' });
     setShowAddSubItem(null);
+  };
+
+  const handleItemDragStart = (itemId: string) => {
+    setDragItemId(itemId);
+  };
+
+  const handleItemDragOver = (e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    dragOverItemRef.current = itemId;
+  };
+
+  const handleItemDrop = () => {
+    if (!project || !dragItemId || !dragOverItemRef.current || dragItemId === dragOverItemRef.current) {
+      setDragItemId(null);
+      dragOverItemRef.current = null;
+      return;
+    }
+    const ids = project.items.map(i => i.id);
+    const fromIdx = ids.indexOf(dragItemId);
+    const toIdx = ids.indexOf(dragOverItemRef.current);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, dragItemId);
+    reorderItems(project.id, ids);
+    setDragItemId(null);
+    dragOverItemRef.current = null;
   };
 
   const tabs: { key: TabType; label: string; show: boolean }[] = [
@@ -260,6 +288,7 @@ export default function ProjectDetail() {
                 <table className="data-table item-table">
                   <thead>
                     <tr>
+                      <th style={{ width: 28 }}></th>
                       <th style={{ width: 36 }}></th>
                       <th>품목명</th>
                       <th>발주 업체</th>
@@ -279,10 +308,18 @@ export default function ProjectDetail() {
                       return (
                         <Fragment key={item.id}>
                           <tr
-                            className={`item-row ${expandedItemId === item.id ? 'item-row-expanded' : ''}`}
+                            className={`item-row ${expandedItemId === item.id ? 'item-row-expanded' : ''} ${dragItemId === item.id ? 'item-row-dragging' : ''}`}
                             onClick={() => setExpandedItemId(expandedItemId === item.id ? null : item.id)}
                             style={{ borderLeft: `4px solid ${item.color || '#3b82f6'}` }}
+                            draggable
+                            onDragStart={(e) => { e.stopPropagation(); handleItemDragStart(item.id); }}
+                            onDragOver={(e) => handleItemDragOver(e, item.id)}
+                            onDrop={(e) => { e.preventDefault(); handleItemDrop(); }}
+                            onDragEnd={() => { setDragItemId(null); dragOverItemRef.current = null; }}
                           >
+                            <td className="item-drag-handle-cell" onClick={e => e.stopPropagation()}>
+                              <span className="item-drag-handle" title="드래그하여 정렬">⠿</span>
+                            </td>
                             <td onClick={e => e.stopPropagation()} style={{ position: 'relative' }}>
                               <div
                                 className="item-color-dot"
@@ -357,7 +394,7 @@ export default function ProjectDetail() {
                           </tr>
                           {expandedItemId === item.id && (
                             <tr className="item-detail-row">
-                              <td colSpan={8}>
+                              <td colSpan={9}>
                                 <div className="item-detail-panel">
                                   <div className="item-detail-full">
                                     <div className="detail-section-header">
@@ -511,7 +548,7 @@ export default function ProjectDetail() {
                       );
                     })}
                     {project.items.length === 0 && (
-                      <tr><td colSpan={8} className="empty-row">등록된 품목이 없습니다. 품목을 추가해주세요.</td></tr>
+                      <tr><td colSpan={9} className="empty-row">등록된 품목이 없습니다. 품목을 추가해주세요.</td></tr>
                     )}
                   </tbody>
                 </table>

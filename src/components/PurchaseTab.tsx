@@ -69,7 +69,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const [formData, setFormData] = useState(emptyPurchase);
   const [dragId, setDragId] = useState<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'in_progress' | 'delivered'>('in_progress');
+  const [activeSubTab, setActiveSubTab] = useState<'all' | 'in_progress' | 'delivered'>('in_progress');
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
 
   // Filter states
@@ -110,7 +110,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
     return result;
   };
 
-  const displayedPurchases = applyFilters(activeSubTab === 'in_progress' ? inProgressPurchases : deliveredPurchases);
+  const displayedPurchases = applyFilters(activeSubTab === 'all' ? allPurchases : activeSubTab === 'in_progress' ? inProgressPurchases : deliveredPurchases);
   const hasActiveFilters = filterItem !== 'all' || filterSupplier !== 'all' || filterTeam !== 'all' || filterStatus !== 'all' || searchQuery.trim() !== '';
   const resetFilters = () => { setFilterItem('all'); setFilterSupplier('all'); setFilterTeam('all'); setFilterStatus('all'); setSearchQuery(''); };
 
@@ -314,6 +314,12 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
         {/* Sub-tab toggle */}
         <div className="purchase-sub-tabs">
           <button
+            className={`purchase-sub-tab ${activeSubTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('all')}
+          >
+            전체<span className="tab-count">{allPurchases.length}</span>
+          </button>
+          <button
             className={`purchase-sub-tab ${activeSubTab === 'in_progress' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('in_progress')}
           >
@@ -372,7 +378,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
           </div>
           {hasActiveFilters && (
             <div className="purchase-filter-result">
-              {displayedPurchases.length}건 표시 (전체 {activeSubTab === 'in_progress' ? inProgressPurchases.length : deliveredPurchases.length}건 중)
+              {displayedPurchases.length}건 표시 (전체 {activeSubTab === 'all' ? allPurchases.length : activeSubTab === 'in_progress' ? inProgressPurchases.length : deliveredPurchases.length}건 중)
             </div>
           )}
         </div>
@@ -412,7 +418,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
               );
             })}
             {displayedPurchases.length === 0 && (
-              <p className="empty-message">{activeSubTab === 'in_progress' ? '진행 중인 발주가 없습니다.' : '납품 완료된 발주가 없습니다.'}</p>
+              <p className="empty-message">{activeSubTab === 'all' ? '등록된 발주가 없습니다.' : activeSubTab === 'in_progress' ? '진행 중인 발주가 없습니다.' : '납품 완료된 발주가 없습니다.'}</p>
             )}
           </div>
 
