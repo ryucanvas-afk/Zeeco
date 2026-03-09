@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import type { Project, Purchase, PurchaseStatus } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
@@ -71,13 +71,47 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const dragOverRef = useRef<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'in_progress' | 'delivered'>('in_progress');
 
+  // Filter states
+  const [filterItem, setFilterItem] = useState<string>('all');
+  const [filterSupplier, setFilterSupplier] = useState<string>('all');
+  const [filterTeam, setFilterTeam] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const allPurchases = project.items.flatMap(item =>
     item.purchases.map(p => ({ ...p, itemName: item.name, parentItemId: item.id, itemColor: item.color || '#3b82f6' }))
   ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
+  // Extract unique values for filter dropdowns
+  const uniqueSuppliers = useMemo(() => [...new Set(allPurchases.map(p => p.supplier).filter(Boolean))].sort(), [allPurchases]);
+  const uniqueTeams = useMemo(() => [...new Set(allPurchases.map(p => p.team).filter(Boolean))].sort(), [allPurchases]);
+
   const inProgressPurchases = allPurchases.filter(p => p.status !== 'delivered');
   const deliveredPurchases = allPurchases.filter(p => p.status === 'delivered');
-  const displayedPurchases = activeSubTab === 'in_progress' ? inProgressPurchases : deliveredPurchases;
+
+  // Apply filters
+  const applyFilters = (purchases: typeof allPurchases) => {
+    let result = purchases;
+    if (filterItem !== 'all') result = result.filter(p => p.parentItemId === filterItem);
+    if (filterSupplier !== 'all') result = result.filter(p => p.supplier === filterSupplier);
+    if (filterTeam !== 'all') result = result.filter(p => p.team === filterTeam);
+    if (filterStatus !== 'all') result = result.filter(p => p.status === filterStatus);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p =>
+        p.partName.toLowerCase().includes(q) ||
+        p.orderNumber.toLowerCase().includes(q) ||
+        p.supplier.toLowerCase().includes(q) ||
+        p.specification.toLowerCase().includes(q) ||
+        p.notes.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  };
+
+  const displayedPurchases = applyFilters(activeSubTab === 'in_progress' ? inProgressPurchases : deliveredPurchases);
+  const hasActiveFilters = filterItem !== 'all' || filterSupplier !== 'all' || filterTeam !== 'all' || filterStatus !== 'all' || searchQuery.trim() !== '';
+  const resetFilters = () => { setFilterItem('all'); setFilterSupplier('all'); setFilterTeam('all'); setFilterStatus('all'); setSearchQuery(''); };
 
   const statusSummary = {
     rfq: allPurchases.filter(p => p.status === 'rfq_writing').length,
@@ -290,6 +324,56 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
           >
             납품 완료<span className="tab-count">{deliveredPurchases.length}</span>
           </button>
+        </div>
+
+        {/* Filters */}
+        <div className="purchase-filters">
+          <div className="purchase-filter-row">
+            <div className="purchase-search">
+              <input
+                type="text"
+                placeholder="발주 검색 (부품명, 발주번호, 공급업체...)"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="purchase-search-input"
+              />
+              {searchQuery && (
+                <button className="purchase-search-clear" onClick={() => setSearchQuery('')}>×</button>
+              )}
+            </div>
+            <select value={filterItem} onChange={e => setFilterItem(e.target.value)} className="purchase-filter-select">
+              <option value="all">전체 품목</option>
+              {project.items.map(item => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+            <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)} className="purchase-filter-select">
+              <option value="all">전체 공급업체</option>
+              {uniqueSuppliers.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="purchase-filter-select">
+              <option value="all">전체 담당팀</option>
+              {uniqueTeams.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="purchase-filter-select">
+              <option value="all">전체 상태</option>
+              {purchaseStatusOptions.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            {hasActiveFilters && (
+              <button className="btn btn-sm btn-ghost" onClick={resetFilters}>필터 초기화</button>
+            )}
+          </div>
+          {hasActiveFilters && (
+            <div className="purchase-filter-result">
+              {displayedPurchases.length}건 표시 (전체 {activeSubTab === 'in_progress' ? inProgressPurchases.length : deliveredPurchases.length}건 중)
+            </div>
+          )}
         </div>
 
         <p className="edit-hint">카드를 클릭하여 직접 수정 / 드래그로 순서 변경 가능</p>

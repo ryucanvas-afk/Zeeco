@@ -1566,6 +1566,81 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Purchase Filters */
+.purchase-filters {
+  margin-bottom: 16px;
+}
+
+.purchase-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.purchase-search {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.purchase-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.purchase-search-input:focus {
+  border-color: #3b82f6;
+}
+
+.purchase-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.purchase-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.purchase-filter-select {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+  outline: none;
+  min-width: 120px;
+  transition: border-color 0.2s;
+}
+
+.purchase-filter-select:focus {
+  border-color: #3b82f6;
+}
+
+.purchase-filter-result {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
 .purchase-card-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2002,6 +2077,205 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--accent-blue);
+}
+
+/* ===== Inspection Layout: Calendar + Detail Side Panel ===== */
+.insp-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .insp-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.insp-layout-calendar {
+  min-width: 0;
+}
+
+.insp-layout-detail {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+.insp-detail-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.insp-detail-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.insp-detail-panel-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.insp-detail-form {
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.insp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.insp-form-grid .form-group {
+  margin-bottom: 4px;
+}
+
+.insp-form-grid .form-group label {
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.insp-form-grid .form-group input {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.insp-detail-form .multi-input-section {
+  margin-top: 8px;
+}
+
+.insp-detail-form .multi-input-section label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.insp-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insp-detail-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #3b82f6;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.insp-detail-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.insp-detail-date {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.insp-detail-section {
+  margin-bottom: 10px;
+}
+
+.insp-detail-section label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.insp-detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.insp-detail-info label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.insp-detail-info span {
+  font-size: 13px;
+  color: #334155;
+}
+
+.insp-detail-notes {
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.insp-detail-notes label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.insp-detail-notes span {
+  font-size: 13px;
+  color: #475569;
+}
+
+.insp-detail-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+.insp-detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1.5px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 40px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.insp-detail-placeholder-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.insp-detail-placeholder p {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
 }
 
 /* ===== Large Inspection Calendar ===== */
