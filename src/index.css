@@ -2581,7 +2581,18 @@ body {
 }
 
 .insp-calendar-cell.is-today {
-  background: rgba(59, 130, 246, 0.1);
+  background: transparent;
+}
+
+.insp-calendar-cell.is-today .insp-day-num {
+  background: var(--accent-blue);
+  color: white !important;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .insp-calendar-cell.is-selected {
@@ -4908,4 +4919,18 @@ body {
 
 .item-row[draggable="true"]:active .item-drag-handle {
   cursor: grabbing;
+}
+
+/* ===== Todo Project Card Dragging ===== */
+.todo-project-card[draggable="true"] {
+  cursor: grab;
+}
+
+.todo-project-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.todo-project-card-dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
 }

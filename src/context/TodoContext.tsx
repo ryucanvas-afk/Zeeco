@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 const STORAGE_KEY = 'zeeco-todos';
 const PHRASES_KEY = 'zeeco-quick-phrases';
 const CUSTOM_CATEGORIES_KEY = 'zeeco-custom-categories';
+const PROJECT_ORDER_KEY = 'zeeco-todo-project-order';
 
 interface TodoContextType {
   todos: TodoItem[];
@@ -24,6 +25,8 @@ interface TodoContextType {
   addCustomCategory: (category: string) => void;
   deleteCustomCategory: (category: string) => void;
   updateCustomCategory: (oldName: string, newName: string) => void;
+  projectOrder: string[];
+  reorderProjectCards: (orderedIds: string[]) => void;
 }
 
 const TodoContext = createContext<TodoContextType | null>(null);
@@ -56,6 +59,15 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [projectOrder, setProjectOrder] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(PROJECT_ORDER_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   }, [todos]);
@@ -67,6 +79,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(customCategories));
   }, [customCategories]);
+
+  useEffect(() => {
+    localStorage.setItem(PROJECT_ORDER_KEY, JSON.stringify(projectOrder));
+  }, [projectOrder]);
 
   const addTodo = useCallback((todo: Omit<TodoItem, 'id' | 'completed' | 'completedAt' | 'createdAt' | 'sortOrder'>) => {
     setTodos(prev => {
@@ -152,8 +168,12 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     setTodos(prev => prev.map(t => t.category === oldName ? { ...t, category: trimmed } : t));
   }, []);
 
+  const reorderProjectCards = useCallback((orderedIds: string[]) => {
+    setProjectOrder(orderedIds);
+  }, []);
+
   return (
-    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory }}>
+    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory, projectOrder, reorderProjectCards }}>
       {children}
     </TodoContext.Provider>
   );
