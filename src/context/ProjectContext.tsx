@@ -144,6 +144,8 @@ interface ProjectContextType {
   addFactoryPurchase: (projectId: string, fp: Omit<FactoryPurchase, 'id'>) => void;
   updateFactoryPurchase: (projectId: string, fpId: string, updates: Partial<FactoryPurchase>) => void;
   deleteFactoryPurchase: (projectId: string, fpId: string) => void;
+  reorderProjects: (projectIds: string[]) => void;
+  reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
   resetData: () => void;
 }
@@ -157,6 +159,26 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
   }, [projects]);
+
+  const reorderProjects = (projectIds: string[]) => {
+    setProjects(prev => {
+      const map = new Map(prev.map(p => [p.id, p]));
+      const reordered = projectIds.map(id => map.get(id)).filter(Boolean) as Project[];
+      // Add any projects not in the reorder list (shouldn't happen but safety)
+      const remaining = prev.filter(p => !projectIds.includes(p.id));
+      return [...reordered, ...remaining];
+    });
+  };
+
+  const reorderItems = (projectId: string, itemIds: string[]) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const map = new Map(p.items.map(i => [i.id, i]));
+      const reordered = itemIds.map(id => map.get(id)).filter(Boolean) as typeof p.items;
+      const remaining = p.items.filter(i => !itemIds.includes(i.id));
+      return { ...p, items: [...reordered, ...remaining] };
+    }));
+  };
 
   const importData = (data: Record<string, unknown>[]) => {
     const migrated = migrateProjects(data);
@@ -414,6 +436,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addPurchase, updatePurchase, deletePurchase, reorderPurchases,
       addInspection, updateInspection, deleteInspection,
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
+      reorderProjects, reorderItems,
       importData, resetData,
     }}>
       {children}

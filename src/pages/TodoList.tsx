@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useTodos } from '../context/TodoContext';
 import { useProjects } from '../context/ProjectContext';
 import type { TodoItem, TodoCategory, TodoDefaultCategory, TodoPriority, QuickPhrase } from '../types';
@@ -39,6 +39,7 @@ function getCategoryInfo(cat: TodoCategory, customCategories: string[]): { label
 const PHRASE_CATEGORIES = ['인사/마무리', '요청', '확인', '회신', '납기', '검수', '일반'];
 
 type ViewTab = 'active' | 'completed';
+type ViewMode = 'list' | 'calendar';
 
 export default function TodoList() {
   const { todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory } = useTodos();
@@ -48,6 +49,11 @@ export default function TodoList() {
   const allCategories: TodoCategory[] = [...DEFAULT_CATEGORIES, ...customCategories];
 
   const [viewTab, setViewTab] = useState<ViewTab>('active');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [filterCategory, setFilterCategory] = useState<TodoCategory | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TodoPriority | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -273,7 +279,8 @@ export default function TodoList() {
 
   const handleDragOver = (e: React.DragEvent, todoId: string, projectId: string) => {
     e.preventDefault();
-    if (dragProjectId.current !== projectId) return;
+    if (projectId !== COMMON_PROJECT_ID && dragProjectId.current !== projectId) return;
+    if (projectId === COMMON_PROJECT_ID && dragProjectId.current !== COMMON_PROJECT_ID) return;
     setDragOverItem(todoId);
   };
 
@@ -343,6 +350,31 @@ export default function TodoList() {
     return [COMMON_PROJECT_ID, ...sorted];
   }, [groupedByProject, visibleProjects]);
 
+  // Calendar helpers
+  const todosWithDueDate = useMemo(() => {
+    return todos.filter(t => t.dueDate && !t.dueDateTBD);
+  }, [todos]);
+
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
+  }, [calendarMonth]);
+
+  const getTodosForDate = useCallback((day: number) => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return todosWithDueDate.filter(t => t.dueDate === dateStr);
+  }, [calendarMonth, todosWithDueDate]);
+
+  const calendarMonthLabel = `${calendarMonth.getFullYear()}년 ${calendarMonth.getMonth() + 1}월`;
+
   const activeTodoCount = todos.filter(t => !t.completed).length;
   const completedTodoCount = todos.filter(t => t.completed).length;
 
@@ -352,6 +384,20 @@ export default function TodoList() {
         <div>
           <h2>To-Do List</h2>
           <p className="page-desc">프로젝트별 할 일 관리</p>
+        </div>
+        <div className="todo-view-toggle">
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setViewMode('list')}
+          >
+            목록 보기
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setViewMode('calendar')}
+          >
+            달력 보기
+          </button>
         </div>
       </div>
 
@@ -478,7 +524,59 @@ export default function TodoList() {
         )}
       </div>
 
-      {/* ===== Todo Section ===== */}
+      {/* ===== Calendar View ===== */}
+      {viewMode === 'calendar' && (
+        <div className="todo-calendar-section">
+          <div className="todo-calendar-header">
+            <button className="btn btn-sm btn-secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>◀</button>
+            <h3 className="todo-calendar-month">{calendarMonthLabel}</h3>
+            <button className="btn btn-sm btn-secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>▶</button>
+            <button className="btn btn-sm btn-ghost" onClick={() => setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>오늘</button>
+          </div>
+          <div className="todo-calendar-grid">
+            <div className="todo-calendar-weekdays">
+              {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+                <div key={d} className="todo-calendar-weekday">{d}</div>
+              ))}
+            </div>
+            <div className="todo-calendar-days">
+              {calendarDays.map((day, idx) => {
+                if (day === null) return <div key={`empty-${idx}`} className="todo-calendar-day todo-calendar-day-empty" />;
+                const dayTodos = getTodosForDate(day);
+                const todayStr = new Date().toISOString().split('T')[0];
+                const dateStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                return (
+                  <div key={day} className={`todo-calendar-day ${isToday ? 'todo-calendar-day-today' : ''} ${dayTodos.length > 0 ? 'todo-calendar-day-has-items' : ''}`}>
+                    <div className="todo-calendar-day-number">{day}</div>
+                    <div className="todo-calendar-day-items">
+                      {dayTodos.slice(0, 3).map(todo => (
+                        <div
+                          key={todo.id}
+                          className={`todo-calendar-item ${todo.completed ? 'todo-calendar-item-done' : ''}`}
+                          style={{ borderLeftColor: getProjectColor(todo.projectId) }}
+                          title={`${todo.title} (${getProjectName(todo.projectId)})`}
+                        >
+                          <span className="todo-calendar-item-title">{todo.title}</span>
+                          <span className="todo-calendar-item-badge" style={{ background: PRIORITY_MAP[todo.priority].color + '22', color: PRIORITY_MAP[todo.priority].color }}>
+                            {PRIORITY_MAP[todo.priority].label}
+                          </span>
+                        </div>
+                      ))}
+                      {dayTodos.length > 3 && (
+                        <div className="todo-calendar-more">+{dayTodos.length - 3}건</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Todo Section (List View) ===== */}
+      {viewMode === 'list' && <>
       <div className="todo-toolbar">
         <div className="todo-tabs">
           <button
@@ -771,7 +869,7 @@ export default function TodoList() {
                   <div
                     key={todo.id}
                     className={`todo-item ${dragItem === todo.id ? 'todo-item-dragging' : ''} ${dragOverItem === todo.id ? 'todo-item-dragover' : ''} ${todo.completed ? 'todo-item-done' : ''}`}
-                    draggable={viewTab === 'active'}
+                    draggable={true}
                     onDragStart={() => handleDragStart(todo.id, projectId)}
                     onDragOver={e => handleDragOver(e, todo.id, projectId)}
                     onDrop={() => handleDrop(projectId)}
@@ -784,7 +882,7 @@ export default function TodoList() {
                         checked={selectedIds.has(todo.id)}
                         onChange={() => toggleSelect(todo.id)}
                       />
-                      {viewTab === 'active' && <span className="todo-drag-handle" title="드래그하여 정렬">⠿</span>}
+                      <span className="todo-drag-handle" title="드래그하여 정렬">⠿</span>
                       <button
                         className={`todo-check ${todo.completed ? 'todo-check-done' : ''}`}
                         onClick={() => toggleComplete(todo.id)}
@@ -852,6 +950,7 @@ export default function TodoList() {
           );
         })()}
       </div>
+      </>}
     </div>
   );
 }

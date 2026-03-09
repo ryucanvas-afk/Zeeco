@@ -4644,3 +4644,268 @@ body {
     padding: 14px 16px;
   }
 }
+
+/* ===== Dashboard Project List Dropdown ===== */
+.summary-card-clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.summary-card-clickable:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+}
+
+.dashboard-project-list {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-project-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dashboard-project-item:hover {
+  background: rgba(59, 130, 246, 0.08);
+  transform: translateX(4px);
+}
+
+.dashboard-project-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dashboard-project-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.dashboard-project-item-no {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', monospace;
+}
+
+.dashboard-project-item-client {
+  font-size: 12px;
+  color: var(--accent-blue);
+}
+
+.dashboard-project-item-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dashboard-summary-row {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dashboard-summary-row:hover {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+.dashboard-summary-row td:first-child {
+  color: var(--accent-blue) !important;
+}
+
+/* ===== Todo Calendar View ===== */
+.todo-view-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.todo-calendar-section {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-glass);
+}
+
+.todo-calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.todo-calendar-month {
+  font-size: 18px;
+  font-weight: 600;
+  min-width: 140px;
+  text-align: center;
+}
+
+.todo-calendar-grid {
+  width: 100%;
+}
+
+.todo-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  margin-bottom: 4px;
+}
+
+.todo-calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 0;
+  text-transform: uppercase;
+}
+
+.todo-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.todo-calendar-day {
+  min-height: 100px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px;
+  transition: var(--transition);
+}
+
+.todo-calendar-day-empty {
+  background: transparent;
+  border: none;
+}
+
+.todo-calendar-day-today {
+  border-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.todo-calendar-day-today .todo-calendar-day-number {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-calendar-day-number {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.todo-calendar-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-calendar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.todo-calendar-item-done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.todo-calendar-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.todo-calendar-item-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.todo-calendar-more {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2px;
+}
+
+/* ===== Project Card Dragging ===== */
+.project-card-dragging {
+  opacity: 0.5;
+  transform: scale(0.98) !important;
+}
+
+.project-card[draggable="true"] {
+  cursor: grab;
+}
+
+.project-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* ===== Item Row Dragging ===== */
+.item-row-dragging {
+  opacity: 0.5;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.item-drag-handle-cell {
+  width: 28px;
+  text-align: center;
+}
+
+.item-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 14px;
+  user-select: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.item-drag-handle:hover {
+  opacity: 1;
+}
+
+.item-row[draggable="true"]:active .item-drag-handle {
+  cursor: grabbing;
+}
