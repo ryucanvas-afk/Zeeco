@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import type { TodoItem, TodoCategory, TodoPriority, QuickPhrase } from '../types';
+import type { TodoItem, QuickPhrase } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-todos';
@@ -94,7 +94,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     setTodos(prev => prev.filter(t => !idSet.has(t.id)));
   }, []);
 
-  const reorderTodos = useCallback((projectId: string, reorderedIds: string[]) => {
+  const reorderTodos = useCallback((_projectId: string, reorderedIds: string[]) => {
     setTodos(prev => {
       const updated = [...prev];
       reorderedIds.forEach((id, index) => {
