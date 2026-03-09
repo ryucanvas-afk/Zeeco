@@ -152,7 +152,8 @@ export interface FactoryPurchase {
 
 // Todo List Types
 export type TodoPriority = 'urgent' | 'high' | 'normal' | 'low';
-export type TodoCategory = 'mail_write' | 'mail_reply' | 'drawing' | 'eic_request' | 'confirmation' | 'purchase_order' | 'general_request';
+export type TodoDefaultCategory = 'mail_write' | 'mail_reply' | 'drawing' | 'eic_request' | 'confirmation' | 'purchase_order' | 'general_request';
+export type TodoCategory = TodoDefaultCategory | string;
 
 export interface TodoItem {
   id: string;

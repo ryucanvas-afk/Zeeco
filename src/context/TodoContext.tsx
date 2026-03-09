@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-todos';
 const PHRASES_KEY = 'zeeco-quick-phrases';
+const CUSTOM_CATEGORIES_KEY = 'zeeco-custom-categories';
 
 interface TodoContextType {
   todos: TodoItem[];
@@ -19,6 +20,10 @@ interface TodoContextType {
   addPhrase: (phrase: Omit<QuickPhrase, 'id' | 'createdAt'>) => void;
   updatePhrase: (id: string, updates: Partial<QuickPhrase>) => void;
   deletePhrase: (id: string) => void;
+  customCategories: string[];
+  addCustomCategory: (category: string) => void;
+  deleteCustomCategory: (category: string) => void;
+  updateCustomCategory: (oldName: string, newName: string) => void;
 }
 
 const TodoContext = createContext<TodoContextType | null>(null);
@@ -42,6 +47,15 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   }, [todos]);
@@ -49,6 +63,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(PHRASES_KEY, JSON.stringify(phrases));
   }, [phrases]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(customCategories));
+  }, [customCategories]);
 
   const addTodo = useCallback((todo: Omit<TodoItem, 'id' | 'completed' | 'completedAt' | 'createdAt' | 'sortOrder'>) => {
     setTodos(prev => {
@@ -117,8 +135,25 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     setPhrases(prev => prev.filter(p => p.id !== id));
   }, []);
 
+  const addCustomCategory = useCallback((category: string) => {
+    const trimmed = category.trim();
+    if (!trimmed) return;
+    setCustomCategories(prev => prev.includes(trimmed) ? prev : [...prev, trimmed]);
+  }, []);
+
+  const deleteCustomCategory = useCallback((category: string) => {
+    setCustomCategories(prev => prev.filter(c => c !== category));
+  }, []);
+
+  const updateCustomCategory = useCallback((oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setCustomCategories(prev => prev.map(c => c === oldName ? trimmed : c));
+    setTodos(prev => prev.map(t => t.category === oldName ? { ...t, category: trimmed } : t));
+  }, []);
+
   return (
-    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase }}>
+    <TodoContext.Provider value={{ todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory }}>
       {children}
     </TodoContext.Provider>
   );

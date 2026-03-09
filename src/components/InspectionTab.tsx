@@ -210,205 +210,221 @@ export default function InspectionTab({ project }: InspectionTabProps) {
         <button className="btn btn-sm btn-primary" onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); }} style={{ marginLeft: 8 }}>오늘</button>
       </div>
 
-      {/* Large Calendar Grid */}
-      <div className="insp-calendar">
-        <div className="insp-calendar-header">
-          {['일', '월', '화', '수', '목', '금', '토'].map(d => (
-            <div key={d} className={`insp-calendar-header-cell ${d === '일' ? 'sun' : ''} ${d === '토' ? 'sat' : ''}`}>{d}</div>
-          ))}
-        </div>
-        <div className="insp-calendar-body">
-          {calendarRows.map((row, rowIdx) => (
-            <div key={rowIdx} className="insp-calendar-row">
-              {row.map((day, colIdx) => {
-                if (day === null) return <div key={`empty-${rowIdx}-${colIdx}`} className="insp-calendar-cell insp-calendar-cell-empty" />;
-                const dayInspections = getInspectionsForDay(day);
-                const dateStr = getDateStr(day);
-                const isToday = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate;
-                const isSun = colIdx === 0;
-                const isSat = colIdx === 6;
-
-                return (
-                  <div
-                    key={day}
-                    className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''}`}
-                    onClick={() => handleDayClick(day)}
-                  >
-                    <div className="insp-cell-header">
-                      <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
-                      {dayInspections.length === 0 && (
-                        <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
-                      )}
-                    </div>
-                    <div className="insp-cell-content">
-                      {dayInspections.map(ins => {
-                        const colorIdx = insColorMap.get(ins.id) || 0;
-                        const colors = RANGE_COLORS[colorIdx];
-                        const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                        const rangeClass = pos && pos !== 'single' ? `insp-range-${pos}` : '';
-
-                        return (
-                          <div
-                            key={ins.id}
-                            className={`insp-cell-entry ${rangeClass}`}
-                            style={{
-                              background: colors.bg,
-                              borderLeftColor: colors.border,
-                            }}
-                            onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
-                          >
-                            <div className="insp-cell-items">
-                              {ins.items.map((item, i) => (
-                                <span key={i} className="insp-cell-tag">{item}</span>
-                              ))}
-                            </div>
-                            {ins.categories.length > 0 && ins.categories[0] && (
-                              <div className="insp-cell-cats">
-                                {ins.categories.map((cat, i) => (
-                                  <span key={i} className="insp-cell-cat-tag">{cat}</span>
-                                ))}
-                              </div>
-                            )}
-                            {ins.location && <span className="insp-cell-location">{ins.location}</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+      {/* Side-by-side: Calendar + Detail Panel */}
+      <div className="insp-layout">
+        {/* Left: Calendar */}
+        <div className="insp-layout-calendar">
+          <div className="insp-calendar">
+            <div className="insp-calendar-header">
+              {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+                <div key={d} className={`insp-calendar-header-cell ${d === '일' ? 'sun' : ''} ${d === '토' ? 'sat' : ''}`}>{d}</div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="insp-calendar-body">
+              {calendarRows.map((row, rowIdx) => (
+                <div key={rowIdx} className="insp-calendar-row">
+                  {row.map((day, colIdx) => {
+                    if (day === null) return <div key={`empty-${rowIdx}-${colIdx}`} className="insp-calendar-cell insp-calendar-cell-empty" />;
+                    const dayInspections = getInspectionsForDay(day);
+                    const dateStr = getDateStr(day);
+                    const isToday = dateStr === todayStr;
+                    const isSelected = dateStr === selectedDate;
+                    const isSun = colIdx === 0;
+                    const isSat = colIdx === 6;
 
-      {/* Selected Day Detail */}
-      {selectedDate && (
-        <div className="section-card" style={{ marginTop: 16 }}>
-          <div className="section-header">
-            <h3 className="section-title">{selectedDate} 검사 일정</h3>
-            <button className="btn btn-primary" onClick={() => openAddForm()}>+ 검사 추가</button>
-          </div>
+                    return (
+                      <div
+                        key={day}
+                        className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''}`}
+                        onClick={() => handleDayClick(day)}
+                      >
+                        <div className="insp-cell-header">
+                          <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
+                          {dayInspections.length === 0 && (
+                            <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
+                          )}
+                        </div>
+                        <div className="insp-cell-content">
+                          {dayInspections.map(ins => {
+                            const colorIdx = insColorMap.get(ins.id) || 0;
+                            const colors = RANGE_COLORS[colorIdx];
+                            const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
+                            const rangeClass = pos && pos !== 'single' ? `insp-range-${pos}` : '';
 
-          {showForm && (
-            <form className="inline-form" onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>검사 시작일</label>
-                  <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label>검사 종료일 (기간 검사 시)</label>
-                  <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} min={formData.date} />
-                </div>
-                <div className="form-group">
-                  <label>검사 장소</label>
-                  <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="검사 장소" />
-                </div>
-                <div className="form-group">
-                  <label>검사 담당자</label>
-                  <input type="text" value={formData.inspector} onChange={e => setFormData({ ...formData, inspector: e.target.value })} placeholder="담당자" />
-                </div>
-                <div className="form-group">
-                  <label>참관 업체</label>
-                  <input type="text" value={formData.observer} onChange={e => setFormData({ ...formData, observer: e.target.value })} placeholder="참관 업체" />
-                </div>
-              </div>
-
-              <div className="multi-input-section">
-                <label>검사 품목 (여러 가지 입력 가능)</label>
-                {formData.items.map((item, idx) => (
-                  <div key={idx} className="multi-input-row">
-                    <input type="text" value={item} onChange={e => updateItemField(idx, e.target.value)} placeholder={`품목 ${idx + 1}`} />
-                    {formData.items.length > 1 && (
-                      <button type="button" className="btn-icon btn-danger" onClick={() => removeItemField(idx)}>✕</button>
-                    )}
-                  </div>
-                ))}
-                <button type="button" className="btn btn-secondary btn-sm" onClick={addItemField}>+ 품목 추가</button>
-              </div>
-
-              <div className="multi-input-section">
-                <label>검사 항목 (여러 가지 입력 가능)</label>
-                {formData.categories.map((cat, idx) => (
-                  <div key={idx} className="multi-input-row">
-                    <input type="text" value={cat} onChange={e => updateCategoryField(idx, e.target.value)} placeholder={`항목 ${idx + 1}`} />
-                    {formData.categories.length > 1 && (
-                      <button type="button" className="btn-icon btn-danger" onClick={() => removeCategoryField(idx)}>✕</button>
-                    )}
-                  </div>
-                ))}
-                <button type="button" className="btn btn-secondary btn-sm" onClick={addCategoryField}>+ 항목 추가</button>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>비고</label>
-                  <input type="text" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="메모" />
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button type="submit" className="btn btn-primary">{editingId ? '수정' : '추가'}</button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); }}>취소</button>
-              </div>
-            </form>
-          )}
-
-          {selectedInspections.length > 0 ? (
-            <div className="inspection-list">
-              {selectedInspections.map(ins => (
-                <div key={ins.id} className="inspection-card">
-                  <div className="inspection-card-header">
-                    <span className="inspection-date">{formatDateRange(ins)}</span>
-                    <div className="action-btns">
-                      <button className="btn-icon" onClick={() => openEditForm(ins)} title="수정">&#9998;</button>
-                      <button className="btn-icon btn-danger" onClick={() => deleteInspection(project.id, ins.id)} title="삭제">✕</button>
-                    </div>
-                  </div>
-                  <div className="inspection-card-body">
-                    <div className="inspection-field">
-                      <label>검사 품목</label>
-                      <div className="tag-list">
-                        {ins.items.map((item, i) => <span key={i} className="tag">{item}</span>)}
+                            return (
+                              <div
+                                key={ins.id}
+                                className={`insp-cell-entry ${rangeClass}`}
+                                style={{
+                                  background: colors.bg,
+                                  borderLeftColor: colors.border,
+                                }}
+                                onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
+                              >
+                                <div className="insp-cell-items">
+                                  {ins.items.map((item, i) => (
+                                    <span key={i} className="insp-cell-tag">{item}</span>
+                                  ))}
+                                </div>
+                                {ins.categories.length > 0 && ins.categories[0] && (
+                                  <div className="insp-cell-cats">
+                                    {ins.categories.map((cat, i) => (
+                                      <span key={i} className="insp-cell-cat-tag">{cat}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {ins.location && <span className="insp-cell-location">{ins.location}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                    <div className="inspection-field">
-                      <label>검사 항목</label>
-                      <div className="tag-list">
-                        {ins.categories.map((cat, i) => <span key={i} className="tag tag-cat">{cat}</span>)}
-                      </div>
-                    </div>
-                    <div className="inspection-detail-grid">
-                      <div className="inspection-detail">
-                        <label>장소</label>
-                        <span>{ins.location || '-'}</span>
-                      </div>
-                      <div className="inspection-detail">
-                        <label>담당자</label>
-                        <span>{ins.inspector || '-'}</span>
-                      </div>
-                      <div className="inspection-detail">
-                        <label>참관 업체</label>
-                        <span>{ins.observer || '-'}</span>
-                      </div>
-                    </div>
-                    {ins.notes && (
-                      <div className="inspection-notes">
-                        <label>비고</label>
-                        <span>{ins.notes}</span>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Right: Detail Panel */}
+        <div className="insp-layout-detail">
+          {selectedDate ? (
+            <div className="insp-detail-panel">
+              <div className="insp-detail-panel-header">
+                <h3>{selectedDate} 검사 일정</h3>
+                <button className="btn btn-sm btn-primary" onClick={() => openAddForm()}>+ 검사 추가</button>
+              </div>
+
+              {showForm && (
+                <form className="insp-detail-form" onSubmit={handleSubmit}>
+                  <div className="insp-form-grid">
+                    <div className="form-group">
+                      <label>시작일</label>
+                      <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>종료일</label>
+                      <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} min={formData.date} />
+                    </div>
+                    <div className="form-group">
+                      <label>장소</label>
+                      <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="검사 장소" />
+                    </div>
+                    <div className="form-group">
+                      <label>담당자</label>
+                      <input type="text" value={formData.inspector} onChange={e => setFormData({ ...formData, inspector: e.target.value })} placeholder="담당자" />
+                    </div>
+                    <div className="form-group">
+                      <label>참관 업체</label>
+                      <input type="text" value={formData.observer} onChange={e => setFormData({ ...formData, observer: e.target.value })} placeholder="참관 업체" />
+                    </div>
+                  </div>
+
+                  <div className="multi-input-section">
+                    <label>검사 품목</label>
+                    {formData.items.map((item, idx) => (
+                      <div key={idx} className="multi-input-row">
+                        <input type="text" value={item} onChange={e => updateItemField(idx, e.target.value)} placeholder={`품목 ${idx + 1}`} />
+                        {formData.items.length > 1 && (
+                          <button type="button" className="btn-icon btn-danger" onClick={() => removeItemField(idx)}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={addItemField}>+ 품목 추가</button>
+                  </div>
+
+                  <div className="multi-input-section">
+                    <label>검사 항목</label>
+                    {formData.categories.map((cat, idx) => (
+                      <div key={idx} className="multi-input-row">
+                        <input type="text" value={cat} onChange={e => updateCategoryField(idx, e.target.value)} placeholder={`항목 ${idx + 1}`} />
+                        {formData.categories.length > 1 && (
+                          <button type="button" className="btn-icon btn-danger" onClick={() => removeCategoryField(idx)}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={addCategoryField}>+ 항목 추가</button>
+                  </div>
+
+                  <div className="form-group" style={{ marginTop: 8 }}>
+                    <label>비고</label>
+                    <input type="text" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="메모" />
+                  </div>
+
+                  <div className="form-actions" style={{ marginTop: 12 }}>
+                    <button type="submit" className="btn btn-primary">{editingId ? '수정' : '추가'}</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); }}>취소</button>
+                  </div>
+                </form>
+              )}
+
+              {selectedInspections.length > 0 ? (
+                <div className="insp-detail-list">
+                  {selectedInspections.map(ins => {
+                    const colorIdx = insColorMap.get(ins.id) || 0;
+                    const colors = RANGE_COLORS[colorIdx];
+                    return (
+                      <div key={ins.id} className="insp-detail-card" style={{ borderLeftColor: colors.border }}>
+                        <div className="insp-detail-card-header">
+                          <span className="insp-detail-date">{formatDateRange(ins)}</span>
+                          <div className="action-btns">
+                            <button className="btn-icon" onClick={() => openEditForm(ins)} title="수정">&#9998;</button>
+                            <button className="btn-icon btn-danger" onClick={() => deleteInspection(project.id, ins.id)} title="삭제">✕</button>
+                          </div>
+                        </div>
+
+                        <div className="insp-detail-section">
+                          <label>검사 품목</label>
+                          <div className="tag-list">
+                            {ins.items.map((item, i) => <span key={i} className="tag">{item}</span>)}
+                          </div>
+                        </div>
+
+                        <div className="insp-detail-section">
+                          <label>검사 항목</label>
+                          <div className="tag-list">
+                            {ins.categories.map((cat, i) => <span key={i} className="tag tag-cat">{cat}</span>)}
+                          </div>
+                        </div>
+
+                        <div className="insp-detail-info-grid">
+                          <div className="insp-detail-info">
+                            <label>장소</label>
+                            <span>{ins.location || '-'}</span>
+                          </div>
+                          <div className="insp-detail-info">
+                            <label>담당자</label>
+                            <span>{ins.inspector || '-'}</span>
+                          </div>
+                          <div className="insp-detail-info">
+                            <label>참관 업체</label>
+                            <span>{ins.observer || '-'}</span>
+                          </div>
+                        </div>
+
+                        {ins.notes && (
+                          <div className="insp-detail-notes">
+                            <label>비고</label>
+                            <span>{ins.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                !showForm && <p className="insp-detail-empty">이 날짜에 등록된 검사 일정이 없습니다.</p>
+              )}
+            </div>
           ) : (
-            !showForm && <p className="empty-message">이 날짜에 등록된 검사 일정이 없습니다.</p>
+            <div className="insp-detail-placeholder">
+              <div className="insp-detail-placeholder-icon">&#128197;</div>
+              <p>달력에서 날짜를 선택하면<br />검사 세부 내용이 여기에 표시됩니다.</p>
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
