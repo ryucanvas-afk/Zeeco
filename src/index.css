@@ -4934,3 +4934,385 @@ body {
   opacity: 0.5;
   transform: scale(0.98);
 }
+
+/* ===== Budget Tab - Excel Style ===== */
+.budget-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.budget-summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-legend {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-glass);
+  border-radius: var(--radius);
+  font-size: 11px;
+  align-items: center;
+}
+
+.budget-legend-item {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.budget-table-wrapper {
+  overflow-x: auto;
+  background: var(--bg-glass-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.budget-table {
+  width: 100%;
+  min-width: 1400px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.budget-th {
+  position: sticky;
+  top: 0;
+  background: #f1f5f9;
+  padding: 8px 6px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.budget-th:last-child {
+  border-right: none;
+}
+
+.budget-th-name {
+  min-width: 220px;
+  text-align: left;
+  padding-left: 12px;
+}
+
+.budget-th-num {
+  min-width: 110px;
+}
+
+.budget-th-sm {
+  min-width: 100px;
+}
+
+.budget-cell {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid rgba(0,0,0,0.06);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.budget-cell:last-child {
+  border-right: none;
+}
+
+.budget-cell-name {
+  font-weight: 500;
+  padding-left: 12px;
+  min-width: 220px;
+}
+
+.budget-cell-num {
+  text-align: right;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  padding-right: 8px;
+}
+
+.budget-cell-auto {
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.015);
+}
+
+.budget-cell-dash {
+  text-align: center;
+}
+
+.budget-cell-negative {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.budget-cell-positive {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.budget-cell-sm {
+  font-size: 11px;
+}
+
+.budget-drag-handle {
+  width: 28px;
+  text-align: center;
+  cursor: grab;
+  color: var(--text-muted);
+  user-select: none;
+  font-size: 14px;
+}
+
+.budget-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Part Header */
+.budget-part-header {
+  cursor: pointer;
+  background: #e2e8f0;
+}
+
+.budget-part-header:hover {
+  background: #cbd5e1;
+}
+
+.budget-part-header td {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.budget-part-toggle {
+  display: inline-block;
+  width: 20px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.budget-part-summary {
+  margin-left: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Category Header (Engineering Hours etc) */
+.budget-category-header {
+  background: #f8fafc;
+}
+
+.budget-category-label {
+  padding: 6px 12px 6px 28px !important;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Row styles */
+.budget-row {
+  transition: background-color 0.15s;
+}
+
+.budget-row:hover {
+  filter: brightness(0.97);
+}
+
+.budget-row[draggable="true"] {
+  cursor: default;
+}
+
+/* Sub-total row */
+.budget-subtotal-row {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.budget-subtotal-row td {
+  border-top: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  padding: 8px 6px;
+}
+
+.budget-subtotal-label {
+  font-size: 12px;
+}
+
+/* Grand total */
+.budget-grand-total-row {
+  background: #1e293b;
+}
+
+.budget-grand-total-row td {
+  color: #fff;
+  font-weight: 700;
+  border-top: 3px solid #0f172a;
+  border-bottom: 3px solid #0f172a;
+  padding: 10px 6px;
+}
+
+.budget-grand-total-row .budget-cell-negative {
+  color: #fca5a5;
+}
+
+.budget-grand-total-row .budget-cell-positive {
+  color: #6ee7b7;
+}
+
+/* Add row */
+.budget-add-row td {
+  padding: 4px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.budget-add-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.budget-add-btn {
+  background: none;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.budget-add-btn:hover {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+
+/* RFQ/PO cell */
+.budget-rfq-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.budget-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.budget-checkbox-label input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent-blue);
+}
+
+/* Context Menu */
+.budget-context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  min-width: 120px;
+}
+
+.budget-context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.budget-context-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.budget-context-menu button:first-child:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Bottom Summary Table */
+.budget-bottom-summary {
+  background: var(--bg-glass-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+}
+
+.budget-summary-table {
+  width: 100%;
+  max-width: 600px;
+  border-collapse: collapse;
+}
+
+.budget-summary-table td {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.budget-summary-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 55%;
+}
+
+.budget-summary-val {
+  text-align: right;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Budget table editable cell overrides */
+.budget-table .editable-cell {
+  padding: 2px 4px;
+  border-radius: 3px;
+  min-width: 40px;
+  display: inline-block;
+}
+
+.budget-table .editable-cell:hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.budget-table .editable-text-input {
+  width: 100%;
+  min-width: 60px;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px solid var(--accent-blue);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.budget-table .editable-select-input {
+  padding: 2px;
+  font-size: 11px;
+  border: 1px solid var(--accent-blue);
+  border-radius: 3px;
+}
