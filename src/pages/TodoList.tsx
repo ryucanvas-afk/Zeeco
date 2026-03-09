@@ -1,9 +1,9 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTodos } from '../context/TodoContext';
 import { useProjects } from '../context/ProjectContext';
-import type { TodoItem, TodoCategory, TodoPriority, QuickPhrase } from '../types';
+import type { TodoItem, TodoCategory, TodoDefaultCategory, TodoPriority, QuickPhrase } from '../types';
 
-const CATEGORY_MAP: Record<TodoCategory, { label: string; color: string }> = {
+const CATEGORY_MAP: Record<TodoDefaultCategory, { label: string; color: string }> = {
   mail_write: { label: '메일 작성', color: '#3b82f6' },
   mail_reply: { label: '메일 회신', color: '#06b6d4' },
   drawing: { label: '도면', color: '#f59e0b' },
@@ -13,6 +13,8 @@ const CATEGORY_MAP: Record<TodoCategory, { label: string; color: string }> = {
   general_request: { label: '일반 요청', color: '#94a3b8' },
 };
 
+const CUSTOM_CATEGORY_COLORS = ['#e11d48', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#4f46e5', '#0d9488', '#ca8a04', '#be185d'];
+
 const PRIORITY_MAP: Record<TodoPriority, { label: string; color: string; order: number }> = {
   urgent: { label: '긴급', color: '#ef4444', order: 0 },
   high: { label: '높음', color: '#f59e0b', order: 1 },
@@ -20,17 +22,30 @@ const PRIORITY_MAP: Record<TodoPriority, { label: string; color: string; order: 
   low: { label: '낮음', color: '#94a3b8', order: 3 },
 };
 
-const ALL_CATEGORIES = Object.keys(CATEGORY_MAP) as TodoCategory[];
+const DEFAULT_CATEGORIES = Object.keys(CATEGORY_MAP) as TodoDefaultCategory[];
 const ALL_PRIORITIES = Object.keys(PRIORITY_MAP) as TodoPriority[];
+
+function isDefaultCategory(cat: string): cat is TodoDefaultCategory {
+  return cat in CATEGORY_MAP;
+}
+
+function getCategoryInfo(cat: TodoCategory, customCategories: string[]): { label: string; color: string } {
+  if (isDefaultCategory(cat)) return CATEGORY_MAP[cat];
+  const idx = customCategories.indexOf(cat);
+  const color = CUSTOM_CATEGORY_COLORS[idx >= 0 ? idx % CUSTOM_CATEGORY_COLORS.length : 0];
+  return { label: cat, color };
+}
 
 const PHRASE_CATEGORIES = ['인사/마무리', '요청', '확인', '회신', '납기', '검수', '일반'];
 
 type ViewTab = 'active' | 'completed';
 
 export default function TodoList() {
-  const { todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase } = useTodos();
+  const { todos, addTodo, updateTodo, deleteTodo, toggleComplete, bulkComplete, bulkDelete, reorderTodos, phrases, addPhrase, updatePhrase, deletePhrase, customCategories, addCustomCategory, deleteCustomCategory, updateCustomCategory } = useTodos();
   const { projects } = useProjects();
   const visibleProjects = projects.filter(p => !p.hidden);
+
+  const allCategories: TodoCategory[] = [...DEFAULT_CATEGORIES, ...customCategories];
 
   const [viewTab, setViewTab] = useState<ViewTab>('active');
   const [filterCategory, setFilterCategory] = useState<TodoCategory | 'all'>('all');
@@ -60,6 +75,14 @@ export default function TodoList() {
   const [phraseForm, setPhraseForm] = useState({ title: '', content: '', category: '일반' });
   const [showPhraseForm, setShowPhraseForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Category combobox state
+  const [categoryMode, setCategoryMode] = useState<'select' | 'custom'>('select');
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+  // Category management state
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryInput, setEditCategoryInput] = useState('');
 
   const filteredPhrases = useMemo(() => {
     let result = phrases;
@@ -495,9 +518,10 @@ export default function TodoList() {
             className="todo-filter-select"
           >
             <option value="all">전체 종류</option>
-            {ALL_CATEGORIES.map(c => (
-              <option key={c} value={c}>{CATEGORY_MAP[c].label}</option>
-            ))}
+            {allCategories.map(c => {
+              const info = getCategoryInfo(c, customCategories);
+              return <option key={c} value={c}>{info.label}</option>;
+            })}
           </select>
 
           <select
@@ -585,15 +609,124 @@ export default function TodoList() {
                     rows={2}
                   />
                   <div className="todo-form-row">
-                    <select
-                      value={formData.category}
-                      onChange={e => setFormData(prev => ({ ...prev, category: e.target.value as TodoCategory }))}
-                      className="todo-form-select"
-                    >
-                      {ALL_CATEGORIES.map(c => (
-                        <option key={c} value={c}>{CATEGORY_MAP[c].label}</option>
-                      ))}
-                    </select>
+                    <div className="todo-category-combobox">
+                      {categoryMode === 'select' ? (
+                        <div className="todo-category-combo-row">
+                          <select
+                            value={formData.category}
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === '__custom__') {
+                                setCategoryMode('custom');
+                                setCustomCategoryInput('');
+                              } else {
+                                setFormData(prev => ({ ...prev, category: val }));
+                              }
+                            }}
+                            className="todo-form-select"
+                          >
+                            {allCategories.map(c => {
+                              const info = getCategoryInfo(c, customCategories);
+                              return <option key={c} value={c}>{info.label}</option>;
+                            })}
+                            <option value="__custom__">+ 직접 입력...</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost todo-category-manage-btn"
+                            onClick={() => setShowCategoryManager(!showCategoryManager)}
+                            title="카테고리 관리"
+                          >
+                            ⚙
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="todo-category-custom-row">
+                          <input
+                            type="text"
+                            placeholder="새 카테고리 이름 입력"
+                            value={customCategoryInput}
+                            onChange={e => setCustomCategoryInput(e.target.value)}
+                            className="todo-form-input todo-category-custom-input"
+                            autoFocus
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const trimmed = customCategoryInput.trim();
+                                if (trimmed) {
+                                  addCustomCategory(trimmed);
+                                  setFormData(prev => ({ ...prev, category: trimmed }));
+                                }
+                                setCategoryMode('select');
+                                setCustomCategoryInput('');
+                              } else if (e.key === 'Escape') {
+                                setCategoryMode('select');
+                                setCustomCategoryInput('');
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => {
+                              const trimmed = customCategoryInput.trim();
+                              if (trimmed) {
+                                addCustomCategory(trimmed);
+                                setFormData(prev => ({ ...prev, category: trimmed }));
+                              }
+                              setCategoryMode('select');
+                              setCustomCategoryInput('');
+                            }}
+                          >
+                            확인
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => { setCategoryMode('select'); setCustomCategoryInput(''); }}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+                      {showCategoryManager && customCategories.length > 0 && (
+                        <div className="todo-category-manager">
+                          <div className="todo-category-manager-title">커스텀 카테고리 관리</div>
+                          {customCategories.map(cat => (
+                            <div key={cat} className="todo-category-manager-item">
+                              {editingCategory === cat ? (
+                                <>
+                                  <input
+                                    type="text"
+                                    value={editCategoryInput}
+                                    onChange={e => setEditCategoryInput(e.target.value)}
+                                    className="todo-form-input todo-category-edit-input"
+                                    autoFocus
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') {
+                                        const trimmed = editCategoryInput.trim();
+                                        if (trimmed && trimmed !== cat) updateCustomCategory(cat, trimmed);
+                                        setEditingCategory(null);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingCategory(null);
+                                      }
+                                    }}
+                                  />
+                                  <button className="btn btn-sm btn-primary" onClick={() => { const trimmed = editCategoryInput.trim(); if (trimmed && trimmed !== cat) updateCustomCategory(cat, trimmed); setEditingCategory(null); }}>저장</button>
+                                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingCategory(null)}>취소</button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="todo-category-manager-label" style={{ color: getCategoryInfo(cat, customCategories).color }}>{cat}</span>
+                                  <button className="btn btn-sm btn-ghost" onClick={() => { setEditingCategory(cat); setEditCategoryInput(cat); }}>수정</button>
+                                  <button className="btn btn-sm btn-ghost todo-delete-btn" onClick={() => { if (confirm(`"${cat}" 카테고리를 삭제하시겠습니까?`)) deleteCustomCategory(cat); }}>삭제</button>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     <select
                       value={formData.priority}
@@ -665,8 +798,8 @@ export default function TodoList() {
                       <div className="todo-item-content">
                         <div className="todo-item-title-row">
                           <span className={`todo-item-title ${todo.completed ? 'todo-title-done' : ''}`}>{todo.title}</span>
-                          <span className="todo-category-badge" style={{ background: CATEGORY_MAP[todo.category].color + '22', color: CATEGORY_MAP[todo.category].color, borderColor: CATEGORY_MAP[todo.category].color + '44' }}>
-                            {CATEGORY_MAP[todo.category].label}
+                          <span className="todo-category-badge" style={{ background: getCategoryInfo(todo.category, customCategories).color + '22', color: getCategoryInfo(todo.category, customCategories).color, borderColor: getCategoryInfo(todo.category, customCategories).color + '44' }}>
+                            {getCategoryInfo(todo.category, customCategories).label}
                           </span>
                           <span className="todo-priority-badge" style={{ background: PRIORITY_MAP[todo.priority].color + '22', color: PRIORITY_MAP[todo.priority].color, borderColor: PRIORITY_MAP[todo.priority].color + '44' }}>
                             {PRIORITY_MAP[todo.priority].label}
