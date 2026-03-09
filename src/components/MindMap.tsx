@@ -149,27 +149,28 @@ export default function MindMap({ projects }: MindMapProps) {
                     width={180}
                     height={80}
                     rx={12}
-                    fill="#1e293b"
+                    fill="rgba(255,255,255,0.85)"
                     stroke={color}
                     strokeWidth={2}
                     className="node-rect"
+                    style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.08))' }}
                   />
                   <circle cx={nodeX - 70} cy={nodeY - 20} r={5} fill={color} />
-                  <text x={nodeX - 58} y={nodeY - 16} fill="white" fontSize={11} fontWeight="bold">
+                  <text x={nodeX - 58} y={nodeY - 16} fill="#1a1a2e" fontSize={11} fontWeight="bold">
                     {project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name}
                   </text>
-                  <text x={nodeX - 70} y={nodeY + 2} fill="#94a3b8" fontSize={9}>
+                  <text x={nodeX - 70} y={nodeY + 2} fill="#6b7280" fontSize={9}>
                     {project.client}
                   </text>
                   <text x={nodeX - 70} y={nodeY + 18} fill={color} fontSize={9}>
                     {statusLabels[project.status]}
                   </text>
-                  <rect x={nodeX + 10} y={nodeY + 10} width={60} height={6} rx={3} fill="#334155" />
+                  <rect x={nodeX + 10} y={nodeY + 10} width={60} height={6} rx={3} fill="rgba(0,0,0,0.08)" />
                   <rect x={nodeX + 10} y={nodeY + 10} width={60 * progress / 100} height={6} rx={3} fill={color} />
-                  <text x={nodeX + 75} y={nodeY + 16} fill="#94a3b8" fontSize={8}>
+                  <text x={nodeX + 75} y={nodeY + 16} fill="#6b7280" fontSize={8}>
                     {progress}%
                   </text>
-                  <text x={nodeX + 10} y={nodeY + 2} fill="#64748b" fontSize={9}>
+                  <text x={nodeX + 10} y={nodeY + 2} fill="#6b7280" fontSize={9}>
                     {totalItems} items
                   </text>
                 </g>
@@ -178,9 +179,9 @@ export default function MindMap({ projects }: MindMapProps) {
           })}
 
           {/* Center node - drawn on top */}
-          <circle cx={centerX} cy={centerY} r={circleR} fill="#1e293b" stroke="#ef4444" strokeWidth={3} />
+          <circle cx={centerX} cy={centerY} r={circleR} fill="rgba(255,255,255,0.9)" stroke="#ef4444" strokeWidth={3} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))' }} />
           <text x={centerX} y={centerY - 8} textAnchor="middle" fill="#ef4444" fontSize={14} fontWeight="bold">ZEECO</text>
-          <text x={centerX} y={centerY + 12} textAnchor="middle" fill="#94a3b8" fontSize={10}>Projects</text>
+          <text x={centerX} y={centerY + 12} textAnchor="middle" fill="#6b7280" fontSize={10}>Projects</text>
         </svg>
       </div>
     </div>
