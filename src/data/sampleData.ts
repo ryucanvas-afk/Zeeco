@@ -38,6 +38,7 @@ export const sampleProjects: Project[] = [
     budgetItems: [],
     inspections: [],
     factoryPurchases: [],
+    budgetSnapshots: [],
     items: [
       {
         id: 'item-001',
@@ -141,6 +142,7 @@ export const sampleProjects: Project[] = [
     budgetItems: [],
     inspections: [],
     factoryPurchases: [],
+    budgetSnapshots: [],
     items: [
       {
         id: 'item-004',
@@ -212,6 +214,7 @@ export const sampleProjects: Project[] = [
     budgetItems: [],
     inspections: [],
     factoryPurchases: [],
+    budgetSnapshots: [],
     items: [
       {
         id: 'item-006',
@@ -289,6 +292,7 @@ export const sampleProjects: Project[] = [
     budgetItems: [],
     inspections: [],
     factoryPurchases: [],
+    budgetSnapshots: [],
     items: [
       {
         id: 'item-008',
@@ -342,6 +346,7 @@ export const sampleProjects: Project[] = [
     budgetItems: [],
     inspections: [],
     factoryPurchases: [],
+    budgetSnapshots: [],
     items: [
       {
         id: 'item-009',

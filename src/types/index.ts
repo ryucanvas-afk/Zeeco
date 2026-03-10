@@ -73,6 +73,7 @@ export interface Project {
   items: ProjectItem[];
   inspections: InspectionEntry[];
   factoryPurchases: FactoryPurchase[];
+  budgetSnapshots: BudgetSnapshot[];
 }
 
 export interface ProjectItem {
@@ -217,6 +218,21 @@ export interface QuickPhrase {
   content: string;
   category: string;
   createdAt: string;
+}
+
+// Budget Snapshot Types
+export interface BudgetSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  exchangeRate: number;
+  eurExchangeRate: number;
+  initialContractAmount: number;
+  initialContractAmountUSD: number;
+  updatedContractAmount: number;
+  updatedContractAmountUSD: number;
+  targetGM: number;
+  budgetItems: BudgetItem[];
 }
 
 // Translation Tool Types

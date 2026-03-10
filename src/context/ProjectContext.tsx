@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem } from '../types';
+import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -84,6 +84,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
       notes: (ins.notes as string) || '',
     })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
+    budgetSnapshots: (p.budgetSnapshots as Project['budgetSnapshots']) || [],
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
       projectId: (i.projectId as string) || (p.id as string) || '',
@@ -177,6 +178,9 @@ interface ProjectContextType {
   updateBudgetItem: (projectId: string, budgetItemId: string, updates: Partial<BudgetItem>) => void;
   deleteBudgetItem: (projectId: string, budgetItemId: string) => void;
   reorderBudgetItems: (projectId: string, budgetItemIds: string[]) => void;
+  saveBudgetSnapshot: (projectId: string, name: string) => void;
+  deleteBudgetSnapshot: (projectId: string, snapshotId: string) => void;
+  loadBudgetSnapshot: (projectId: string, snapshotId: string) => void;
   reorderProjects: (projectIds: string[]) => void;
   reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
@@ -483,6 +487,52 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const saveBudgetSnapshot = (projectId: string, name: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const snapshot: BudgetSnapshot = {
+        id: uuidv4(),
+        name,
+        createdAt: new Date().toISOString(),
+        exchangeRate: p.exchangeRate,
+        eurExchangeRate: p.eurExchangeRate,
+        initialContractAmount: p.initialContractAmount,
+        initialContractAmountUSD: p.initialContractAmountUSD,
+        updatedContractAmount: p.updatedContractAmount,
+        updatedContractAmountUSD: p.updatedContractAmountUSD,
+        targetGM: p.targetGM,
+        budgetItems: JSON.parse(JSON.stringify(p.budgetItems || [])),
+      };
+      return { ...p, budgetSnapshots: [...(p.budgetSnapshots || []), snapshot] };
+    }));
+  };
+
+  const deleteBudgetSnapshot = (projectId: string, snapshotId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return { ...p, budgetSnapshots: (p.budgetSnapshots || []).filter(s => s.id !== snapshotId) };
+    }));
+  };
+
+  const loadBudgetSnapshot = (projectId: string, snapshotId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const snapshot = (p.budgetSnapshots || []).find(s => s.id === snapshotId);
+      if (!snapshot) return p;
+      return {
+        ...p,
+        exchangeRate: snapshot.exchangeRate,
+        eurExchangeRate: snapshot.eurExchangeRate,
+        initialContractAmount: snapshot.initialContractAmount,
+        initialContractAmountUSD: snapshot.initialContractAmountUSD,
+        updatedContractAmount: snapshot.updatedContractAmount,
+        updatedContractAmountUSD: snapshot.updatedContractAmountUSD,
+        targetGM: snapshot.targetGM,
+        budgetItems: JSON.parse(JSON.stringify(snapshot.budgetItems)),
+      };
+    }));
+  };
+
   const reorderBudgetItems = (projectId: string, budgetItemIds: string[]) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -506,6 +556,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addInspection, updateInspection, deleteInspection,
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
       addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
+      saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot,
       reorderProjects, reorderItems,
       importData, resetData,
     }}>

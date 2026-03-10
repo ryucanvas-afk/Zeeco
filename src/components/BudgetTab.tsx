@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import type { Project, BudgetItem, BudgetPart, QuotationCurrency } from '../types';
+import type { Project, BudgetItem, BudgetPart, BudgetSnapshot, QuotationCurrency } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
 
@@ -43,10 +43,13 @@ function newGroupId() {
 }
 
 export default function BudgetTab({ project }: BudgetTabProps) {
-  const { updateProject, addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems } = useProjects();
+  const { updateProject, addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems, saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot } = useProjects();
   const [collapsedParts, setCollapsedParts] = useState<Record<string, boolean>>({});
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showSnapshotPanel, setShowSnapshotPanel] = useState(false);
+  const [snapshotName, setSnapshotName] = useState('');
+  const [compareSnapshotId, setCompareSnapshotId] = useState<string | null>(null);
 
   // Drag state
   const dragId = useRef<string | null>(null);
@@ -205,6 +208,31 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const contractForCalc = updatedContract > 0 ? updatedContract : initialContract;
   const availableBudget = contractForCalc > 0 ? contractForCalc * (1 - targetGM / 100) : 0;
   const remainingBudget = availableBudget - totalRevised;
+
+  // Snapshot comparison map: item name → snapshot values
+  const compareMap = useMemo(() => {
+    if (!compareSnapshotId) return null;
+    const snap = (project.budgetSnapshots || []).find((s: BudgetSnapshot) => s.id === compareSnapshotId);
+    if (!snap) return null;
+    const map = new Map<string, { quotationPrice: number; revisedBudget: number; originalBudgetUSD: number }>();
+    for (const item of snap.budgetItems) {
+      map.set(item.name, {
+        quotationPrice: item.quotationPrice,
+        revisedBudget: item.revisedBudget,
+        originalBudgetUSD: item.originalBudgetUSD,
+      });
+    }
+    return map;
+  }, [compareSnapshotId, project.budgetSnapshots]);
+
+  const renderDiff = (current: number, prev: number | undefined) => {
+    if (prev === undefined || prev === 0 && current === 0) return null;
+    const diff = current - prev;
+    if (diff === 0) return null;
+    const color = diff > 0 ? '#dc2626' : '#059669';
+    const sign = diff > 0 ? '+' : '';
+    return <div className="budget-diff-indicator" style={{ color }}>{sign}{fmt(diff)}</div>;
+  };
 
   const togglePart = (part: string) => {
     setCollapsedParts(prev => ({ ...prev, [part]: !prev[part] }));
@@ -453,11 +481,13 @@ export default function BudgetTab({ project }: BudgetTabProps) {
             {item.quotationCurrency && item.quotationCurrency !== 'KRW' && item.quotationPrice > 0 && (
               <div className="budget-converted-krw">≈ ₩{fmt(item.quotationPrice)}</div>
             )}
+            {compareMap && renderDiff(item.quotationPrice, compareMap.get(item.name)?.quotationPrice)}
           </td>
         )}
         {!skipMergedCells && (
           <td className={`budget-cell budget-cell-num ${inGroup ? 'budget-cell-merged' : ''}`} rowSpan={inGroup ? span : undefined}>
             <EditableCell value={String(item.revisedBudget || '')} type="number" onSave={v => updateBudgetItem(project.id, item.id, { revisedBudget: Number(v) || 0 })} placeholder="-" />
+            {compareMap && renderDiff(item.revisedBudget, compareMap.get(item.name)?.revisedBudget)}
           </td>
         )}
         {!skipMergedCells && (
@@ -684,6 +714,122 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Snapshot Panel */}
+      <div className="budget-snapshot-bar">
+        <button className="btn btn-sm btn-secondary" onClick={() => setShowSnapshotPanel(!showSnapshotPanel)}>
+          {showSnapshotPanel ? '접기' : `CASE 관리 (${(project.budgetSnapshots || []).length})`}
+        </button>
+        {!showSnapshotPanel && compareSnapshotId && (
+          <button className="btn btn-sm btn-secondary" onClick={() => setCompareSnapshotId(null)} style={{ marginLeft: 8 }}>비교 해제</button>
+        )}
+      </div>
+
+      {showSnapshotPanel && (
+        <div className="budget-snapshot-panel">
+          <div className="budget-snapshot-save">
+            <input
+              type="text"
+              className="budget-snapshot-input"
+              placeholder="저장할 CASE 이름 (예: CASE A - 최저가)"
+              value={snapshotName}
+              onChange={e => setSnapshotName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && snapshotName.trim()) {
+                  saveBudgetSnapshot(project.id, snapshotName.trim());
+                  setSnapshotName('');
+                }
+              }}
+            />
+            <button
+              className="btn btn-sm btn-primary"
+              disabled={!snapshotName.trim()}
+              onClick={() => {
+                saveBudgetSnapshot(project.id, snapshotName.trim());
+                setSnapshotName('');
+              }}
+            >현재 예산 저장</button>
+          </div>
+
+          {(project.budgetSnapshots || []).length > 0 ? (
+            <div className="budget-snapshot-list">
+              {(project.budgetSnapshots || []).map((snap: BudgetSnapshot) => {
+                const snapItems = snap.budgetItems || [];
+                const snapTotalRevised = (() => {
+                  const seenGroups = new Set<string>();
+                  let total = 0;
+                  for (const i of snapItems) {
+                    if (i.groupId) {
+                      if (seenGroups.has(i.groupId)) continue;
+                      seenGroups.add(i.groupId);
+                    }
+                    total += i.revisedBudget || 0;
+                  }
+                  return total;
+                })();
+                const snapTotalQuotation = (() => {
+                  const seenGroups = new Set<string>();
+                  let total = 0;
+                  for (const i of snapItems) {
+                    if (i.groupId) {
+                      if (seenGroups.has(i.groupId)) continue;
+                      seenGroups.add(i.groupId);
+                    }
+                    total += i.quotationPrice || 0;
+                  }
+                  return total;
+                })();
+                const isComparing = compareSnapshotId === snap.id;
+
+                return (
+                  <div key={snap.id} className={`budget-snapshot-card ${isComparing ? 'comparing' : ''}`}>
+                    <div className="budget-snapshot-card-header">
+                      <div>
+                        <strong>{snap.name}</strong>
+                        <span className="budget-snapshot-date">{new Date(snap.createdAt).toLocaleString('ko-KR')}</span>
+                      </div>
+                      <div className="budget-snapshot-card-actions">
+                        <button
+                          className={`btn btn-sm ${isComparing ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setCompareSnapshotId(isComparing ? null : snap.id)}
+                        >{isComparing ? '비교 중' : '비교'}</button>
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => { if (window.confirm(`"${snap.name}" CASE를 현재 예산에 불러오시겠습니까? 현재 예산이 덮어씌워집니다.`)) loadBudgetSnapshot(project.id, snap.id); }}
+                        >불러오기</button>
+                        <button
+                          className="btn btn-sm btn-danger-outline"
+                          onClick={() => { if (window.confirm(`"${snap.name}" CASE를 삭제하시겠습니까?`)) deleteBudgetSnapshot(project.id, snap.id); }}
+                        >삭제</button>
+                      </div>
+                    </div>
+                    <div className="budget-snapshot-card-body">
+                      <div className="budget-snapshot-stat">
+                        <span className="budget-snapshot-stat-label">수정예산</span>
+                        <span>{fmtKRW(snapTotalRevised)}</span>
+                      </div>
+                      <div className="budget-snapshot-stat">
+                        <span className="budget-snapshot-stat-label">견적가</span>
+                        <span>{fmtKRW(snapTotalQuotation)}</span>
+                      </div>
+                      <div className="budget-snapshot-stat">
+                        <span className="budget-snapshot-stat-label">환율</span>
+                        <span>{fmt(snap.exchangeRate)}</span>
+                      </div>
+                      <div className="budget-snapshot-stat">
+                        <span className="budget-snapshot-stat-label">Target GM</span>
+                        <span>{snap.targetGM || 0}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="budget-snapshot-empty">저장된 CASE가 없습니다. 현재 예산을 저장해보세요.</p>
+          )}
+        </div>
+      )}
 
       {/* Merge toolbar */}
       {selectedIds.size >= 2 && (
