@@ -65,6 +65,7 @@ export default function MindMap({ projects }: MindMapProps) {
       updatedContractAmountUSD: 0,
       contractAmountUSD: 0,
       budgetItems: [],
+      budgetSnapshots: [],
     });
   };
 
