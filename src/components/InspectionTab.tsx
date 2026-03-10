@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Project, InspectionEntry } from '../types';
 import { useProjects } from '../context/ProjectContext';
+import InspectionPdfPreview from './InspectionPdfPreview';
 
 interface InspectionTabProps {
   project: Project;
@@ -67,6 +68,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     observer: '',
     notes: '',
   });
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   const inspections = (project.inspections || []);
 
@@ -208,6 +210,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
         <span className="insp-calendar-title">{year}년 {MONTH_NAMES[month]}</span>
         <button className="btn btn-secondary" onClick={nextMonth}>&gt;</button>
         <button className="btn btn-sm btn-primary" onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); }} style={{ marginLeft: 8 }}>오늘</button>
+        <button className="btn btn-sm btn-secondary" onClick={() => setShowPdfPreview(true)} style={{ marginLeft: 'auto' }}>PDF 미리보기 / 추출</button>
       </div>
 
       {/* Side-by-side: Calendar + Detail Panel */}
@@ -425,6 +428,15 @@ export default function InspectionTab({ project }: InspectionTabProps) {
           )}
         </div>
       </div>
+
+      {showPdfPreview && (
+        <InspectionPdfPreview
+          project={project}
+          year={year}
+          month={month}
+          onClose={() => setShowPdfPreview(false)}
+        />
+      )}
     </div>
   );
 }
