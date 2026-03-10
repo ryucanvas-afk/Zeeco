@@ -144,10 +144,21 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const calcSubTotal = (items: BudgetItem[]) => {
     const origUSD = items.reduce((s, i) => s + i.originalBudgetUSD, 0);
     const origKRW = items.reduce((s, i) => s + (i.originalBudgetKRW || calcOriginalKRW(i)), 0);
-    const quotation = items.reduce((s, i) => s + i.quotationPrice, 0);
-    const revised = items.reduce((s, i) => s + i.revisedBudget, 0);
-    const margin = items.reduce((s, i) => s + calcMarginPrice(i), 0);
-    const change = items.reduce((s, i) => s + calcAmountChange(i), 0);
+    // For grouped items, only the first item in each group holds the merged values (견적가, 수정예산)
+    // Non-first items in a group should not contribute to quotation/revised totals
+    const seenGroups = new Set<string>();
+    let quotation = 0;
+    let revised = 0;
+    for (const i of items) {
+      if (i.groupId) {
+        if (seenGroups.has(i.groupId)) continue; // skip non-first items in group
+        seenGroups.add(i.groupId);
+      }
+      quotation += i.quotationPrice;
+      revised += i.revisedBudget;
+    }
+    const margin = revised - quotation;
+    const change = origKRW - revised;
     return { origUSD, origKRW, quotation, revised, margin, change };
   };
 
@@ -171,9 +182,22 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   const totalRevised = grandTotal.revised;
   const initialGM = initialContract > 0 ? (initialContract - totalBudget) / initialContract : 0;
   const expectedGM1 = updatedContract > 0 ? (updatedContract - totalRevised) / updatedContract : 0;
-  const surplusFromExecution = budgetItems
-    .filter(i => i.category === 'item' && calcExecutionRate(i) > 0 && calcExecutionRate(i) < 1)
-    .reduce((s, i) => s + (i.revisedBudget - i.quotationPrice), 0);
+  const surplusFromExecution = (() => {
+    const seenGroups = new Set<string>();
+    let total = 0;
+    for (const i of budgetItems) {
+      if (i.category !== 'item') continue;
+      if (i.groupId) {
+        if (seenGroups.has(i.groupId)) continue;
+        seenGroups.add(i.groupId);
+      }
+      const rate = calcExecutionRate(i);
+      if (rate > 0 && rate < 1) {
+        total += i.revisedBudget - i.quotationPrice;
+      }
+    }
+    return total;
+  })();
   const expectedGM2 = updatedContract > 0 ? (updatedContract - totalRevised + surplusFromExecution) / updatedContract : 0;
 
   // Target GM & Available Budget calculation
@@ -314,10 +338,14 @@ export default function BudgetTab({ project }: BudgetTabProps) {
   };
 
   // Compute group-level aggregated values for merged display
+  // For merged columns (견적가, 수정예산, 업체), only the first item holds the value
   const getGroupTotals = useCallback((groupId: string) => {
     const groupItems = budgetItems.filter(i => i.groupId === groupId);
-    const totalQuotation = groupItems.reduce((s, i) => s + i.quotationPrice, 0);
-    const totalRevised = groupItems.reduce((s, i) => s + i.revisedBudget, 0);
+    const firstItem = groupItems[0];
+    // Merged columns: only first item's values (user edits only the merged cell)
+    const totalQuotation = firstItem?.quotationPrice || 0;
+    const totalRevised = firstItem?.revisedBudget || 0;
+    // Non-merged: sum all items' original budgets
     const totalOrigKRW = groupItems.reduce((s, i) => s + (i.originalBudgetKRW || i.originalBudgetUSD * exchangeRate), 0);
     const execRate = totalRevised > 0 ? totalQuotation / totalRevised : 0;
     const margin = totalRevised - totalQuotation;

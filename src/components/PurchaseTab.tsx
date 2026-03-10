@@ -31,8 +31,11 @@ const emptyPurchase: Omit<Purchase, 'id' | 'itemId'> = {
 
 const purchaseStatusOptions = [
   { value: 'rfq_writing', label: 'RFQ 작성 중' },
+  { value: 'rfq_requesting', label: '견적 요청 중' },
+  { value: 'price_negotiating', label: '금액 협의 중' },
   { value: 'internal_approval', label: '내부 결재 중' },
   { value: 'zoe_approval', label: 'ZOE 결재 중' },
+  { value: 'po_reviewing', label: '발주서 검토 중' },
   { value: 'po_completed', label: '발주 완료' },
   { value: 'manufacturing', label: '제작 중' },
   { value: 'inspecting', label: '검사 중' },
@@ -115,8 +118,9 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const resetFilters = () => { setFilterItem('all'); setFilterSupplier('all'); setFilterTeam('all'); setFilterStatus('all'); setSearchQuery(''); };
 
   const statusSummary = {
-    rfq: allPurchases.filter(p => p.status === 'rfq_writing').length,
-    approval: allPurchases.filter(p => p.status === 'internal_approval' || p.status === 'zoe_approval').length,
+    rfq: allPurchases.filter(p => p.status === 'rfq_writing' || p.status === 'rfq_requesting').length,
+    negotiating: allPurchases.filter(p => p.status === 'price_negotiating').length,
+    approval: allPurchases.filter(p => p.status === 'internal_approval' || p.status === 'zoe_approval' || p.status === 'po_reviewing').length,
     ordered: allPurchases.filter(p => p.status === 'po_completed').length,
     manufacturing: allPurchases.filter(p => p.status === 'manufacturing').length,
     delivered: allPurchases.filter(p => p.status === 'delivered' || p.status === 'partial_delivered').length,
