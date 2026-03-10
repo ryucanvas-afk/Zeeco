@@ -5788,3 +5788,128 @@ body {
   color: #9ca3af;
   text-align: right;
 }
+
+/* ===== Budget Snapshot / CASE Management ===== */
+.budget-snapshot-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.budget-snapshot-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.budget-snapshot-save {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.budget-snapshot-input {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.budget-snapshot-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.budget-snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.budget-snapshot-card {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+
+.budget-snapshot-card.comparing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+.budget-snapshot-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.budget-snapshot-card-header strong {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.budget-snapshot-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 10px;
+}
+
+.budget-snapshot-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.budget-snapshot-card-body {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.budget-snapshot-stat {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+.budget-snapshot-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.budget-snapshot-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 20px;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-danger-outline:hover {
+  background: #fef2f2;
+}
+
+/* Diff indicator for snapshot comparison */
+.budget-diff-indicator {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
