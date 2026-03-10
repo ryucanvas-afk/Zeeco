@@ -118,11 +118,15 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
   const resetFilters = () => { setFilterItem('all'); setFilterSupplier('all'); setFilterTeam('all'); setFilterStatus('all'); setSearchQuery(''); };
 
   const statusSummary = {
-    rfq: allPurchases.filter(p => p.status === 'rfq_writing' || p.status === 'rfq_requesting').length,
-    negotiating: allPurchases.filter(p => p.status === 'price_negotiating').length,
-    approval: allPurchases.filter(p => p.status === 'internal_approval' || p.status === 'zoe_approval' || p.status === 'po_reviewing').length,
-    ordered: allPurchases.filter(p => p.status === 'po_completed').length,
+    rfq_writing: allPurchases.filter(p => p.status === 'rfq_writing').length,
+    rfq_requesting: allPurchases.filter(p => p.status === 'rfq_requesting').length,
+    price_negotiating: allPurchases.filter(p => p.status === 'price_negotiating').length,
+    internal_approval: allPurchases.filter(p => p.status === 'internal_approval').length,
+    zoe_approval: allPurchases.filter(p => p.status === 'zoe_approval').length,
+    po_reviewing: allPurchases.filter(p => p.status === 'po_reviewing').length,
+    po_completed: allPurchases.filter(p => p.status === 'po_completed').length,
     manufacturing: allPurchases.filter(p => p.status === 'manufacturing').length,
+    inspecting: allPurchases.filter(p => p.status === 'inspecting').length,
     delivered: allPurchases.filter(p => p.status === 'delivered' || p.status === 'partial_delivered').length,
   };
 
@@ -183,16 +187,40 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
           <div className="summary-label">전체 발주</div>
         </div>
         <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('rfq_writing'); }}>
-          <div className="summary-value">{statusSummary.rfq}</div>
+          <div className="summary-value">{statusSummary.rfq_writing}</div>
           <div className="summary-label">RFQ 작성 중</div>
         </div>
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('rfq_requesting'); }}>
+          <div className="summary-value">{statusSummary.rfq_requesting}</div>
+          <div className="summary-label">견적 요청 중</div>
+        </div>
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('price_negotiating'); }}>
+          <div className="summary-value">{statusSummary.price_negotiating}</div>
+          <div className="summary-label">금액 협의 중</div>
+        </div>
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('internal_approval'); }}>
+          <div className="summary-value">{statusSummary.internal_approval}</div>
+          <div className="summary-label">내부 결재 중</div>
+        </div>
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('zoe_approval'); }}>
+          <div className="summary-value">{statusSummary.zoe_approval}</div>
+          <div className="summary-label">ZOE 결재 중</div>
+        </div>
+        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('po_reviewing'); }}>
+          <div className="summary-value">{statusSummary.po_reviewing}</div>
+          <div className="summary-label">발주서 검토 중</div>
+        </div>
         <div className="summary-card card-ordered summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('po_completed'); }}>
-          <div className="summary-value">{statusSummary.ordered}</div>
+          <div className="summary-value">{statusSummary.po_completed}</div>
           <div className="summary-label">발주 완료</div>
         </div>
         <div className="summary-card card-shipped summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('manufacturing'); }}>
           <div className="summary-value">{statusSummary.manufacturing}</div>
           <div className="summary-label">제작 중</div>
+        </div>
+        <div className="summary-card card-shipped summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('inspecting'); }}>
+          <div className="summary-value">{statusSummary.inspecting}</div>
+          <div className="summary-label">검사 중</div>
         </div>
         <div className="summary-card card-delivered summary-card-clickable" onClick={() => { setActiveSubTab('delivered'); resetFilters(); }}>
           <div className="summary-value">{statusSummary.delivered}</div>
