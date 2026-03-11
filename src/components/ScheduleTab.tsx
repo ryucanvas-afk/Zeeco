@@ -38,6 +38,8 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapshotName, setSnapshotName] = useState('');
   const [showGantt, setShowGantt] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [notePopupTaskId, setNotePopupTaskId] = useState<string | null>(null);
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
@@ -528,9 +530,30 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 </div>
               </div>
               <div className="ms-row-actions">
+                {!showNotes && (
+                  <button
+                    className={`btn-icon ms-btn-memo ${task.note ? 'ms-btn-memo-has' : ''}`}
+                    onClick={() => setNotePopupTaskId(notePopupTaskId === task.id ? null : task.id)}
+                    title={task.note ? '메모 보기/편집' : '메모 추가'}
+                  >
+                    {task.note ? '📝' : '📋'}
+                  </button>
+                )}
                 <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
                 <button className="btn-icon btn-danger ms-btn-del" onClick={() => handleDelete(task.id)} title="삭제">✕</button>
               </div>
+              {/* Note popup (when notes hidden and icon clicked) */}
+              {!showNotes && notePopupTaskId === task.id && (
+                <div className="ms-note-popup">
+                  <EditableCell
+                    value={task.note || ''}
+                    type="multiline"
+                    placeholder="메모 입력..."
+                    onSave={v => { handleUpdate(task.id, 'note', v); }}
+                  />
+                  <button className="ms-note-popup-close" onClick={() => setNotePopupTaskId(null)}>✕</button>
+                </div>
+              )}
             </div>
             {/* Right: Gantt bar (only shown when toggled) */}
             {showGantt && (
@@ -539,15 +562,17 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               </div>
             )}
           </div>
-          {/* Note: full-width row below, separated by thin line */}
-          <div className="ms-row-note-full">
-            <EditableCell
-              value={task.note || ''}
-              type="multiline"
-              placeholder="메모 입력..."
-              onSave={v => handleUpdate(task.id, 'note', v)}
-            />
-          </div>
+          {/* Note: full-width row below (only when showNotes toggled on) */}
+          {showNotes && (
+            <div className="ms-row-note-full">
+              <EditableCell
+                value={task.note || ''}
+                type="multiline"
+                placeholder="메모 입력..."
+                onSave={v => handleUpdate(task.id, 'note', v)}
+              />
+            </div>
+          )}
         </div>
         {/* Children (recursive) */}
         {isExpanded && children.map(child => renderTaskRow(child, level + 1))}
@@ -594,6 +619,12 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
           <div className="section-actions" style={{ gap: 6, display: 'flex', flexWrap: 'wrap' }}>
             <button className="btn btn-secondary btn-sm" onClick={expandAll}>모두 펼치기</button>
             <button className="btn btn-secondary btn-sm" onClick={collapseAll}>모두 접기</button>
+            <button
+              className={`btn btn-sm ${showNotes ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setShowNotes(!showNotes); if (showNotes) setNotePopupTaskId(null); }}
+            >
+              {showNotes ? '메모 숨기기' : '메모 보기'}
+            </button>
             <button
               className={`btn btn-sm ${showGantt ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowGantt(!showGantt)}

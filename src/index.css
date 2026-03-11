@@ -5992,7 +5992,7 @@ body {
 }
 
 .ms-header-act {
-  width: 56px;
+  width: 76px;
 }
 
 .ms-header-timeline {
@@ -6202,11 +6202,12 @@ body {
 }
 
 .ms-row-actions {
-  width: 56px;
+  width: 76px;
   display: flex;
   align-items: center;
   gap: 2px;
   justify-content: center;
+  position: relative;
 }
 
 .ms-btn-add {
@@ -6238,12 +6239,99 @@ body {
   transition: opacity 0.15s;
 }
 
-.ms-row:hover .ms-btn-del {
+.ms-row-wrapper:hover .ms-btn-del {
   opacity: 0.7;
 }
 
-.ms-row:hover .ms-btn-del:hover {
+.ms-row-wrapper:hover .ms-btn-del:hover {
   opacity: 1;
+}
+
+/* Memo icon button */
+.ms-btn-memo {
+  font-size: 12px !important;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  opacity: 0.3;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.ms-btn-memo-has {
+  opacity: 0.7;
+}
+
+.ms-row-wrapper:hover .ms-btn-memo {
+  opacity: 0.8;
+}
+
+.ms-btn-memo:hover {
+  opacity: 1 !important;
+}
+
+/* Note popup (appears next to actions when notes are hidden) */
+.ms-note-popup {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  width: 320px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.ms-note-popup .editable-cell {
+  width: 100%;
+}
+
+.ms-note-popup .editable-cell span {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  display: block;
+  min-height: 28px;
+  color: var(--text-secondary);
+}
+
+.ms-note-popup .editable-textarea-input {
+  width: 100%;
+  font-size: 12px;
+  min-height: 60px;
+  resize: vertical;
+  line-height: 1.5;
+  padding: 6px 8px;
+}
+
+.ms-note-popup-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.ms-note-popup-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
 }
 
 .ms-row-gantt {
