@@ -26,7 +26,8 @@ function computeDuration(start: string, end: string): number {
 }
 
 export default function ScheduleTab({ project }: ScheduleTabProps) {
-  const { initializeDefaultSchedule, addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
+  const { projects, initializeDefaultSchedule, resetMasterSchedule, copyMasterScheduleFrom, addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
+  const [showImportFrom, setShowImportFrom] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'group' | 'task'>('group');
   const [formParentId, setFormParentId] = useState('');
@@ -38,6 +39,8 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapshotName, setSnapshotName] = useState('');
   const [showGantt, setShowGantt] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [notePopupTaskId, setNotePopupTaskId] = useState<string | null>(null);
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
@@ -528,9 +531,30 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 </div>
               </div>
               <div className="ms-row-actions">
+                {!showNotes && (
+                  <button
+                    className={`btn-icon ms-btn-memo ${task.note ? 'ms-btn-memo-has' : ''}`}
+                    onClick={() => setNotePopupTaskId(notePopupTaskId === task.id ? null : task.id)}
+                    title={task.note ? '메모 보기/편집' : '메모 추가'}
+                  >
+                    {task.note ? '📝' : '📋'}
+                  </button>
+                )}
                 <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
                 <button className="btn-icon btn-danger ms-btn-del" onClick={() => handleDelete(task.id)} title="삭제">✕</button>
               </div>
+              {/* Note popup (when notes hidden and icon clicked) */}
+              {!showNotes && notePopupTaskId === task.id && (
+                <div className="ms-note-popup">
+                  <EditableCell
+                    value={task.note || ''}
+                    type="multiline"
+                    placeholder="메모 입력..."
+                    onSave={v => { handleUpdate(task.id, 'note', v); }}
+                  />
+                  <button className="ms-note-popup-close" onClick={() => setNotePopupTaskId(null)}>✕</button>
+                </div>
+              )}
             </div>
             {/* Right: Gantt bar (only shown when toggled) */}
             {showGantt && (
@@ -539,15 +563,17 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               </div>
             )}
           </div>
-          {/* Note: full-width row below, separated by thin line */}
-          <div className="ms-row-note-full">
-            <EditableCell
-              value={task.note || ''}
-              type="multiline"
-              placeholder="메모 입력..."
-              onSave={v => handleUpdate(task.id, 'note', v)}
-            />
-          </div>
+          {/* Note: full-width row below (only when showNotes toggled on) */}
+          {showNotes && (
+            <div className="ms-row-note-full">
+              <EditableCell
+                value={task.note || ''}
+                type="multiline"
+                placeholder="메모 입력..."
+                onSave={v => handleUpdate(task.id, 'note', v)}
+              />
+            </div>
+          )}
         </div>
         {/* Children (recursive) */}
         {isExpanded && children.map(child => renderTaskRow(child, level + 1))}
@@ -595,6 +621,12 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
             <button className="btn btn-secondary btn-sm" onClick={expandAll}>모두 펼치기</button>
             <button className="btn btn-secondary btn-sm" onClick={collapseAll}>모두 접기</button>
             <button
+              className={`btn btn-sm ${showNotes ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setShowNotes(!showNotes); if (showNotes) setNotePopupTaskId(null); }}
+            >
+              {showNotes ? '메모 숨기기' : '메모 보기'}
+            </button>
+            <button
               className={`btn btn-sm ${showGantt ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowGantt(!showGantt)}
             >
@@ -605,8 +637,53 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               CASE 관리 {(project.scheduleSnapshots || []).length > 0 ? `(${(project.scheduleSnapshots || []).length})` : ''}
             </button>
             <button className="btn btn-accent btn-sm" onClick={() => setShowPdfPreview(true)}>PDF 추출</button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowImportFrom(!showImportFrom)}
+            >
+              다른 프로젝트에서 불러오기
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ color: '#ef4444' }}
+              onClick={() => {
+                if (confirm('일정을 초기화하시겠습니까? 모든 작업이 삭제되고 기본 그룹으로 다시 생성됩니다.')) {
+                  resetMasterSchedule(project.id);
+                }
+              }}
+            >
+              초기화
+            </button>
           </div>
         </div>
+
+        {/* Import from other project */}
+        {showImportFrom && (
+          <div className="ms-import-panel">
+            <p className="ms-import-label">다른 프로젝트의 일정 구조를 불러옵니다 (진행률은 0%로 초기화됩니다):</p>
+            <div className="ms-import-list">
+              {projects.filter(p => p.id !== project.id && (p.masterSchedule || []).length > 0).map(p => (
+                <button
+                  key={p.id}
+                  className="btn btn-secondary btn-sm ms-import-item"
+                  onClick={() => {
+                    if (confirm(`"${p.name}"의 일정을 불러오시겠습니까? 현재 일정이 대체됩니다.`)) {
+                      copyMasterScheduleFrom(project.id, p.id);
+                      setShowImportFrom(false);
+                    }
+                  }}
+                >
+                  <span className="ms-import-item-color" style={{ backgroundColor: p.color }} />
+                  {p.name}
+                  <span className="ms-import-item-count">{(p.masterSchedule || []).length}개 작업</span>
+                </button>
+              ))}
+              {projects.filter(p => p.id !== project.id && (p.masterSchedule || []).length > 0).length === 0 && (
+                <p className="ms-import-empty">불러올 수 있는 프로젝트가 없습니다.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {showForm && (
           <form className="inline-form" onSubmit={handleSubmit}>
