@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot } from '../types';
+import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot, MasterScheduleTask } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -85,6 +85,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
     budgetSnapshots: (p.budgetSnapshots as Project['budgetSnapshots']) || [],
+    masterSchedule: (p.masterSchedule as Project['masterSchedule']) || [],
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
       projectId: (i.projectId as string) || (p.id as string) || '',
@@ -181,6 +182,10 @@ interface ProjectContextType {
   saveBudgetSnapshot: (projectId: string, name: string) => void;
   deleteBudgetSnapshot: (projectId: string, snapshotId: string) => void;
   loadBudgetSnapshot: (projectId: string, snapshotId: string) => void;
+  addMasterTask: (projectId: string, task: Omit<MasterScheduleTask, 'id'>) => void;
+  updateMasterTask: (projectId: string, taskId: string, updates: Partial<MasterScheduleTask>) => void;
+  deleteMasterTask: (projectId: string, taskId: string) => void;
+  reorderMasterTasks: (projectId: string, taskIds: string[]) => void;
   reorderProjects: (projectIds: string[]) => void;
   reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
@@ -228,7 +233,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'factoryPurchases'>) => {
-    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [] }]);
+    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [] }]);
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {
@@ -533,6 +538,50 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const addMasterTask = (projectId: string, task: Omit<MasterScheduleTask, 'id'>) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return { ...p, masterSchedule: [...(p.masterSchedule || []), { ...task, id: uuidv4() }] };
+    }));
+  };
+
+  const updateMasterTask = (projectId: string, taskId: string, updates: Partial<MasterScheduleTask>) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return {
+        ...p,
+        masterSchedule: (p.masterSchedule || []).map(t => t.id === taskId ? { ...t, ...updates } : t),
+      };
+    }));
+  };
+
+  const deleteMasterTask = (projectId: string, taskId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      // Delete the task and all its children
+      const ms = p.masterSchedule || [];
+      const idsToDelete = new Set<string>();
+      const collectChildren = (parentId: string) => {
+        idsToDelete.add(parentId);
+        ms.filter(t => t.parentId === parentId).forEach(t => collectChildren(t.id));
+      };
+      collectChildren(taskId);
+      return { ...p, masterSchedule: ms.filter(t => !idsToDelete.has(t.id)) };
+    }));
+  };
+
+  const reorderMasterTasks = (projectId: string, taskIds: string[]) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const map = new Map((p.masterSchedule || []).map(t => [t.id, t]));
+      const reordered = taskIds.map((id, idx) => {
+        const t = map.get(id);
+        return t ? { ...t, sortOrder: idx } : null;
+      }).filter(Boolean) as MasterScheduleTask[];
+      return { ...p, masterSchedule: reordered };
+    }));
+  };
+
   const reorderBudgetItems = (projectId: string, budgetItemIds: string[]) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -557,6 +606,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
       addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
       saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot,
+      addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
       reorderProjects, reorderItems,
       importData, resetData,
     }}>

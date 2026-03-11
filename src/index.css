@@ -5913,3 +5913,335 @@ body {
   margin-top: 2px;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
 }
+
+/* ===== Master Schedule Gantt Chart ===== */
+.ms-gantt-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+}
+
+.ms-gantt-header {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ms-header-info {
+  min-width: 460px;
+  width: 460px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-right: 1px solid var(--border-color);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  gap: 8px;
+}
+
+.ms-header-name {
+  flex: 1;
+  min-width: 180px;
+}
+
+.ms-header-dates {
+  width: 160px;
+  text-align: center;
+}
+
+.ms-header-progress {
+  width: 80px;
+  text-align: center;
+}
+
+.ms-header-act {
+  width: 44px;
+}
+
+.ms-header-timeline {
+  flex: 1;
+  min-width: 500px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ms-month-header {
+  position: absolute;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border-color);
+  padding: 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.ms-gantt-body {
+  min-height: 100px;
+}
+
+.ms-row {
+  display: flex;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.15);
+  transition: background-color 0.15s;
+}
+
+.ms-row:hover {
+  background-color: rgba(59, 130, 246, 0.04);
+}
+
+.ms-row-group {
+  background: rgba(30, 41, 59, 0.06);
+}
+
+.ms-row-group.ms-level-0 {
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.ms-row-info {
+  min-width: 460px;
+  width: 460px;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-right: 1px solid var(--border-color);
+  gap: 6px;
+}
+
+.ms-row-name {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.ms-row-group .ms-row-name {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.ms-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 9px;
+  color: var(--text-muted);
+  padding: 2px;
+  line-height: 1;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.ms-expand-btn:hover {
+  color: var(--accent-blue);
+}
+
+.ms-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ms-row-dates {
+  width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.ms-date-sep {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.ms-row-progress {
+  width: 80px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.ms-progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: right;
+}
+
+.ms-progress-bar {
+  width: 40px;
+  height: 5px;
+}
+
+.ms-row-actions {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: center;
+}
+
+.ms-btn-add {
+  font-size: 14px !important;
+  color: var(--accent-blue) !important;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.ms-btn-del {
+  font-size: 10px !important;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  opacity: 0.4;
+}
+
+.ms-row:hover .ms-btn-del {
+  opacity: 1;
+}
+
+.ms-row-gantt {
+  flex: 1;
+  min-width: 500px;
+  position: relative;
+}
+
+.ms-gantt-bar-area {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  min-height: 28px;
+}
+
+.ms-gantt-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: rgba(71, 85, 105, 0.08);
+}
+
+.ms-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ef4444;
+  z-index: 3;
+  opacity: 0.7;
+}
+
+.ms-gantt-bar {
+  position: absolute;
+  height: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 4px;
+  cursor: default;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+
+.ms-gantt-bar-group {
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.ms-gantt-bar-fill {
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.ms-gantt-bar-label {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+
+.ms-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Color picker row */
+.ms-color-picker-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ms-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.ms-color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.ms-color-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--accent-blue);
+}
+
+/* PDF page */
+.ms-pdf-page {
+  background: #ffffff;
+  padding: 24px 30px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-width: 1000px;
+  color: #1e293b;
+}
+
+/* Accent button */
+.btn-accent {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-accent:hover {
+  opacity: 0.9;
+}
