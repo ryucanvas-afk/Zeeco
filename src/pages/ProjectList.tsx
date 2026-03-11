@@ -48,6 +48,8 @@ export default function ProjectList() {
     contractAmountUSD: 0,
     budgetItems: [],
     budgetSnapshots: [],
+    masterSchedule: [],
+    scheduleSnapshots: [],
   });
 
   const visibleProjects = showHidden ? projects : projects.filter(p => !p.hidden);
@@ -67,6 +69,8 @@ export default function ProjectList() {
       directCost: 0, contingency: 0, needsFactoryManagement: false,
       initialContractAmount: 0, initialContractAmountUSD: 0, updatedContractAmount: 0, updatedContractAmountUSD: 0, contractAmountUSD: 0, budgetItems: [],
       budgetSnapshots: [],
+      masterSchedule: [],
+      scheduleSnapshots: [],
     });
     setShowForm(false);
   };

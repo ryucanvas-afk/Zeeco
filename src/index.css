@@ -5913,3 +5913,492 @@ body {
   margin-top: 2px;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
 }
+
+/* ===== Master Schedule Gantt Chart ===== */
+.ms-gantt-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-glass);
+}
+
+.ms-gantt-header {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ms-header-info {
+  min-width: 500px;
+  width: 500px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-right: 1px solid var(--border-color);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  gap: 8px;
+}
+
+.ms-header-name {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ms-header-dates {
+  width: 170px;
+  text-align: center;
+}
+
+.ms-header-progress {
+  width: 90px;
+  text-align: center;
+}
+
+.ms-header-act {
+  width: 48px;
+}
+
+.ms-header-timeline {
+  flex: 1;
+  min-width: 500px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ms-month-header {
+  position: absolute;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border-color);
+  padding: 6px 0;
+  letter-spacing: 0.5px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-gantt-body {
+  min-height: 100px;
+}
+
+.ms-row {
+  display: flex;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.12);
+  transition: background-color 0.12s;
+}
+
+.ms-row:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.ms-row-group {
+  background: rgba(30, 41, 59, 0.05);
+}
+
+.ms-row-group.ms-level-0 {
+  background: rgba(30, 41, 59, 0.08);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.25);
+}
+
+.ms-row-info {
+  min-width: 500px;
+  width: 500px;
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-right: 1px solid var(--border-color);
+  gap: 6px;
+}
+
+.ms-row-name {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 400;
+  letter-spacing: -0.1px;
+}
+
+.ms-row-group .ms-row-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.ms-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 3px;
+  line-height: 1;
+  transition: color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.ms-expand-btn:hover {
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.ms-task-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+.ms-row-dates {
+  width: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-date-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 0 1px;
+}
+
+.ms-row-progress {
+  width: 90px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.ms-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 34px;
+  text-align: right;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-progress-bar {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.ms-row-actions {
+  width: 48px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: center;
+}
+
+.ms-btn-add {
+  font-size: 15px !important;
+  color: var(--accent-blue) !important;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.ms-btn-add:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.ms-btn-del {
+  font-size: 10px !important;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ms-row:hover .ms-btn-del {
+  opacity: 0.7;
+}
+
+.ms-row:hover .ms-btn-del:hover {
+  opacity: 1;
+}
+
+.ms-row-gantt {
+  flex: 1;
+  min-width: 500px;
+  position: relative;
+}
+
+.ms-gantt-bar-area {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  min-height: 32px;
+}
+
+.ms-gantt-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: rgba(71, 85, 105, 0.06);
+}
+
+.ms-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ef4444;
+  z-index: 3;
+  opacity: 0.75;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.3);
+}
+
+.ms-gantt-bar {
+  position: absolute;
+  height: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 5px;
+  overflow: hidden;
+  min-width: 4px;
+  cursor: default;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ms-gantt-bar:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.ms-gantt-bar-group {
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.9;
+  box-shadow: none;
+}
+
+.ms-gantt-bar-fill {
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.35);
+  border-radius: inherit;
+}
+
+.ms-gantt-bar-label {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Color picker row */
+.ms-color-picker-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ms-color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.ms-color-swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.ms-color-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--accent-blue), 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* PDF page */
+.ms-pdf-page {
+  background: #ffffff;
+  padding: 28px 34px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  min-width: 1000px;
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Paper size selector */
+.ms-paper-selector {
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+  background: var(--bg-secondary);
+}
+
+.ms-paper-selector .btn {
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 4px 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Accent button */
+.btn-accent {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.2px;
+}
+
+.btn-accent:hover {
+  opacity: 0.92;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+/* Schedule Snapshot / CASE Management */
+.ms-snapshot-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  margin-top: 8px;
+}
+
+.ms-snapshot-save {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ms-snapshot-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+}
+
+.ms-snapshot-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.ms-snapshot-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ms-snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-snapshot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+
+.ms-snapshot-card:hover {
+  border-color: var(--border-hover);
+}
+
+.ms-snapshot-card-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ms-snapshot-card-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ms-snapshot-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-snapshot-count {
+  font-size: 11px;
+  color: var(--accent-blue);
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.ms-snapshot-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ms-snapshot-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px;
+}

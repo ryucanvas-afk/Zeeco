@@ -74,6 +74,8 @@ export interface Project {
   inspections: InspectionEntry[];
   factoryPurchases: FactoryPurchase[];
   budgetSnapshots: BudgetSnapshot[];
+  masterSchedule: MasterScheduleTask[];
+  scheduleSnapshots: ScheduleSnapshot[];
 }
 
 export interface ProjectItem {
@@ -159,6 +161,27 @@ export interface FactoryPurchase {
   amount: number;
   currency: string;
   notes: string;
+}
+
+// Master Schedule (Gantt) Types
+export interface MasterScheduleTask {
+  id: string;
+  parentId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  duration: number;
+  progress: number;
+  color: string;
+  expanded: boolean;
+  sortOrder: number;
+}
+
+export interface ScheduleSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  tasks: MasterScheduleTask[];
 }
 
 // Budget Management Types
