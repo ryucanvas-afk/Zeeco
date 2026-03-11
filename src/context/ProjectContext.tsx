@@ -6,11 +6,20 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
   '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4',
+];
+
+const DEFAULT_SCHEDULE_GROUPS = [
+  { name: 'Document Approval', color: '#3b82f6' },
+  { name: 'Purchasing Materials', color: '#10b981' },
+  { name: 'Fabrication', color: '#f59e0b' },
+  { name: 'Inspection', color: '#ef4444' },
+  { name: 'Packing', color: '#6366f1' },
+  { name: 'Delivery', color: '#ec4899' },
 ];
 const VERSION_KEY = 'zeeco-schema-version';
 
@@ -85,7 +94,19 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
     budgetSnapshots: (p.budgetSnapshots as Project['budgetSnapshots']) || [],
-    masterSchedule: (p.masterSchedule as Project['masterSchedule']) || [],
+    masterSchedule: ((p.masterSchedule as Record<string, unknown>[]) || []).map((t: Record<string, unknown>) => ({
+      id: (t.id as string) || uuidv4(),
+      parentId: (t.parentId as string) || '',
+      name: (t.name as string) || '',
+      startDate: (t.startDate as string) || '',
+      endDate: (t.endDate as string) || '',
+      duration: (t.duration as number) || 0,
+      progress: (t.progress as number) || 0,
+      color: (t.color as string) || '#6366f1',
+      expanded: (t.expanded as boolean) ?? true,
+      sortOrder: (t.sortOrder as number) || 0,
+      note: (t.note as string) || '',
+    })),
     scheduleSnapshots: (p.scheduleSnapshots as Project['scheduleSnapshots']) || [],
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
@@ -183,6 +204,7 @@ interface ProjectContextType {
   saveBudgetSnapshot: (projectId: string, name: string) => void;
   deleteBudgetSnapshot: (projectId: string, snapshotId: string) => void;
   loadBudgetSnapshot: (projectId: string, snapshotId: string) => void;
+  initializeDefaultSchedule: (projectId: string) => void;
   addMasterTask: (projectId: string, task: Omit<MasterScheduleTask, 'id'>) => void;
   updateMasterTask: (projectId: string, taskId: string, updates: Partial<MasterScheduleTask>) => void;
   deleteMasterTask: (projectId: string, taskId: string) => void;
@@ -542,6 +564,28 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const initializeDefaultSchedule = (projectId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      if ((p.masterSchedule || []).length > 0) return p;
+      const today = new Date().toISOString().split('T')[0];
+      const defaultTasks: MasterScheduleTask[] = DEFAULT_SCHEDULE_GROUPS.map((g, idx) => ({
+        id: uuidv4(),
+        parentId: '',
+        name: g.name,
+        startDate: today,
+        endDate: '',
+        duration: 0,
+        progress: 0,
+        color: g.color,
+        expanded: true,
+        sortOrder: idx,
+        note: '',
+      }));
+      return { ...p, masterSchedule: defaultTasks };
+    }));
+  };
+
   const addMasterTask = (projectId: string, task: Omit<MasterScheduleTask, 'id'>) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -639,7 +683,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
       addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
       saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot,
-      addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
+      initializeDefaultSchedule, addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
       saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot,
       reorderProjects, reorderItems,
       importData, resetData,

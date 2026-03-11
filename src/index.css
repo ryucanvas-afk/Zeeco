@@ -5915,6 +5915,14 @@ body {
 }
 
 /* ===== Master Schedule Gantt Chart ===== */
+.schedule-tab-fullscreen {
+  width: 100%;
+}
+
+.ms-section-card {
+  max-width: 100% !important;
+}
+
 .ms-gantt-container {
   overflow-x: auto;
   border: 1px solid var(--border-color);
@@ -5933,8 +5941,8 @@ body {
 }
 
 .ms-header-info {
-  min-width: 500px;
-  width: 500px;
+  min-width: 680px;
+  width: 680px;
   display: flex;
   align-items: center;
   padding: 10px 12px;
@@ -5947,23 +5955,52 @@ body {
   gap: 8px;
 }
 
+/* Full-width mode when Gantt chart is hidden */
+.ms-header-info-full {
+  min-width: unset;
+  width: 100%;
+  border-right: none;
+}
+
 .ms-header-name {
   flex: 1;
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .ms-header-dates {
-  width: 170px;
+  width: 200px;
   text-align: center;
 }
 
 .ms-header-progress {
-  width: 90px;
+  width: 110px;
   text-align: center;
 }
 
+.ms-header-note {
+  width: 180px;
+  text-align: center;
+}
+
+.ms-header-info-full .ms-header-name {
+  min-width: 280px;
+}
+
+.ms-header-info-full .ms-header-dates {
+  width: 220px;
+}
+
+.ms-header-info-full .ms-header-progress {
+  width: 130px;
+}
+
+.ms-header-info-full .ms-header-note {
+  flex: 1;
+  min-width: 200px;
+}
+
 .ms-header-act {
-  width: 48px;
+  width: 56px;
 }
 
 .ms-header-timeline {
@@ -6009,19 +6046,30 @@ body {
   border-bottom: 1px solid rgba(71, 85, 105, 0.25);
 }
 
+.ms-row-group.ms-level-1 {
+  background: rgba(30, 41, 59, 0.04);
+}
+
 .ms-row-info {
-  min-width: 500px;
-  width: 500px;
+  min-width: 680px;
+  width: 680px;
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-right: 1px solid var(--border-color);
-  gap: 6px;
+  gap: 8px;
+}
+
+/* Full-width mode when Gantt chart is hidden */
+.ms-row-info-full {
+  min-width: unset;
+  width: 100%;
+  border-right: none;
 }
 
 .ms-row-name {
   flex: 1;
-  min-width: 200px;
+  min-width: 220px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -6029,6 +6077,10 @@ body {
   color: var(--text-primary);
   font-weight: 400;
   letter-spacing: -0.1px;
+}
+
+.ms-row-info-full .ms-row-name {
+  min-width: 280px;
 }
 
 .ms-row-group .ms-row-name {
@@ -6064,13 +6116,17 @@ body {
 }
 
 .ms-row-dates {
-  width: 170px;
+  width: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
   font-size: 12px;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.ms-row-info-full .ms-row-dates {
+  width: 220px;
 }
 
 .ms-date-sep {
@@ -6080,11 +6136,15 @@ body {
 }
 
 .ms-row-progress {
-  width: 90px;
+  width: 110px;
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
+}
+
+.ms-row-info-full .ms-row-progress {
+  width: 130px;
 }
 
 .ms-progress-text {
@@ -6101,8 +6161,41 @@ body {
   border-radius: 3px;
 }
 
+.ms-row-note {
+  width: 180px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.ms-row-info-full .ms-row-note {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ms-row-note .editable-cell {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ms-row-note .editable-cell span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.ms-row-note .editable-cell input {
+  width: 100%;
+  font-size: 12px;
+}
+
 .ms-row-actions {
-  width: 48px;
+  width: 56px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -6220,6 +6313,32 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   line-height: 1;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+/* Duration days input */
+.ms-duration-input {
+  width: 48px;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+}
+
+.ms-duration-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.ms-duration-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 2px;
 }
 
 .ms-empty {

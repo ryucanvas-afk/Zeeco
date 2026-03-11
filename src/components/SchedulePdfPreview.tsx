@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import type { Project, MasterScheduleTask } from '../types';
@@ -21,10 +21,11 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
   const tasks = project.masterSchedule || [];
   const rootTasks = tasks.filter(t => !t.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const getChildren = (parentId: string) =>
-    tasks.filter(t => t.parentId === parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+  const getChildren = useCallback((parentId: string) =>
+    tasks.filter(t => t.parentId === parentId).sort((a, b) => a.sortOrder - b.sortOrder),
+  [tasks]);
 
-  const hasChildren = (taskId: string) => tasks.some(t => t.parentId === taskId);
+  const hasChildren = useCallback((taskId: string) => tasks.some(t => t.parentId === taskId), [tasks]);
 
   // Timeline calculation
   const allTasks = tasks.filter(t => t.startDate && t.endDate);
@@ -54,34 +55,47 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
   const todayOffset = differenceInDays(today, paddedStart);
   const todayPercent = (todayOffset / totalDays) * 100;
 
-  const getGroupProgress = (taskId: string): number => {
+  const getGroupProgress = useCallback((taskId: string): number => {
     const children = getChildren(taskId);
     if (children.length === 0) return 0;
-    return Math.round(children.reduce((sum, c) => sum + (c.progress || 0), 0) / children.length);
-  };
+    let total = 0, count = 0;
+    children.forEach(c => {
+      if (hasChildren(c.id)) {
+        total += getGroupProgress(c.id);
+      } else {
+        total += (c.progress || 0);
+      }
+      count++;
+    });
+    return count > 0 ? Math.round(total / count) : 0;
+  }, [getChildren, hasChildren]);
 
-  const getGroupDateRange = (taskId: string): { start: string; end: string } => {
+  const getGroupDateRange = useCallback((taskId: string): { start: string; end: string } => {
     const children = getChildren(taskId);
     if (children.length === 0) {
       const t = tasks.find(x => x.id === taskId);
       return { start: t?.startDate || '', end: t?.endDate || '' };
     }
     let minDate = '', maxDate = '';
-    children.forEach(c => {
-      if (c.startDate && (!minDate || c.startDate < minDate)) minDate = c.startDate;
-      if (c.endDate && (!maxDate || c.endDate > maxDate)) maxDate = c.endDate;
-    });
+    const collectDates = (parentId: string) => {
+      getChildren(parentId).forEach(c => {
+        if (c.startDate && (!minDate || c.startDate < minDate)) minDate = c.startDate;
+        if (c.endDate && (!maxDate || c.endDate > maxDate)) maxDate = c.endDate;
+        if (hasChildren(c.id)) collectDates(c.id);
+      });
+    };
+    collectDates(taskId);
     return { start: minDate, end: maxDate };
-  };
+  }, [tasks, getChildren, hasChildren]);
 
-  // Flatten tasks for rendering
+  // Flatten tasks for rendering (recursive)
   const flatTasks: { task: MasterScheduleTask; level: number; isGroup: boolean }[] = [];
   const flatten = (parentId: string, level: number) => {
     const children = parentId ? getChildren(parentId) : rootTasks;
     children.forEach(t => {
       const isGroup = hasChildren(t.id) || (!t.parentId);
       flatTasks.push({ task: t, level, isGroup });
-      if (isGroup) flatten(t.id, level + 1);
+      flatten(t.id, level + 1);
     });
   };
   flatten('', 0);
@@ -103,19 +117,16 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
 
-      // Check if we need multiple pages
       const ratio = pdfWidth / imgWidth;
       const scaledHeight = imgHeight * ratio;
 
       if (scaledHeight <= pdfHeight) {
-        // Fits on one page
         const w = imgWidth * ratio;
         const h = scaledHeight;
         const x = (pdfWidth - w) / 2;
         const y = 5;
         pdf.addImage(imgData, 'PNG', x, y, w, h);
       } else {
-        // Multiple pages needed
         const pageContentHeight = pdfHeight - 10;
         const sourcePageHeight = pageContentHeight / ratio;
         let yOffset = 0;
@@ -125,7 +136,6 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
           if (pageNum > 0) pdf.addPage();
           const sliceHeight = Math.min(sourcePageHeight, imgHeight - yOffset);
 
-          // Create a canvas for this page slice
           const pageCanvas = document.createElement('canvas');
           pageCanvas.width = imgWidth;
           pageCanvas.height = sliceHeight;
@@ -168,13 +178,24 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
     const left = (differenceInDays(s, paddedStart) / totalDays) * 100;
     const width = Math.max((differenceInDays(e, s) / totalDays) * 100, 0.5);
     const progress = isGroup ? getGroupProgress(task.id) : task.progress;
+    const durationDays = differenceInDays(e, s);
 
     return (
-      <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 10 : 16, top: isGroup ? 9 : 6, borderRadius: isGroup ? 2 : 4, backgroundColor: task.color || '#6366f1', overflow: 'hidden', boxShadow: isGroup ? 'none' : '0 1px 2px rgba(0,0,0,0.1)' }}>
-        {!isGroup && progress > 0 && (
-          <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'rgba(255,255,255,0.35)' }} />
+      <>
+        <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 10 : 16, top: isGroup ? 9 : 6, borderRadius: isGroup ? 2 : 4, backgroundColor: task.color || '#6366f1', overflow: 'hidden', boxShadow: isGroup ? 'none' : '0 1px 2px rgba(0,0,0,0.1)' }}>
+          {!isGroup && progress > 0 && (
+            <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'rgba(255,255,255,0.35)' }} />
+          )}
+        </div>
+        {/* Date labels on bar */}
+        {width > 5 && !isGroup && (
+          <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, top: 23, display: 'flex', justifyContent: 'space-between', padding: '0 2px', fontSize: 7, color: '#94a3b8', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+            <span>{format(s, 'MM-dd')}</span>
+            <span>{durationDays}d</span>
+            <span>{format(e, 'MM-dd')}</span>
+          </div>
         )}
-      </div>
+      </>
     );
   };
 
@@ -216,12 +237,13 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
               </div>
             </div>
 
-            {/* Gantt Table */}
+            {/* Gantt Table Header */}
             <div style={{ display: 'flex', fontSize: 11, borderBottom: '2px solid #1e293b', fontWeight: 700, color: '#1e293b', letterSpacing: '0.3px' }}>
-              <div style={{ width: 280, minWidth: 280, padding: '6px 8px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
-              <div style={{ width: 80, minWidth: 80, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
-              <div style={{ width: 80, minWidth: 80, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
-              <div style={{ width: 40, minWidth: 40, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
+              <div style={{ width: 260, minWidth: 260, padding: '6px 8px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
+              <div style={{ width: 72, minWidth: 72, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
+              <div style={{ width: 72, minWidth: 72, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
+              <div style={{ width: 36, minWidth: 36, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
+              <div style={{ width: 100, minWidth: 100, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Note</div>
               <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
                 {months.map((m, i) => {
                   const mStart = differenceInDays(m, paddedStart);
@@ -242,7 +264,7 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
               const progress = isGroup ? getGroupProgress(task.id) : task.progress;
               return (
                 <div key={task.id} style={{ display: 'flex', fontSize: 11, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#f1f5f9' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                  <div style={{ width: 280, minWidth: 280, padding: '5px 8px', paddingLeft: 8 + level * 18, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5, fontSize: isGroup && level === 0 ? 12 : 11 }}>
+                  <div style={{ width: 260, minWidth: 260, padding: '5px 8px', paddingLeft: 8 + level * 18, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5, fontSize: isGroup && level === 0 ? 12 : 11 }}>
                     {isGroup ? (
                       <span style={{ color: task.color || '#6366f1', fontSize: 10 }}>■</span>
                     ) : (
@@ -250,16 +272,19 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
                     )}
                     {task.name}
                   </div>
-                  <div style={{ width: 80, minWidth: 80, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 72, minWidth: 72, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.startDate ? format(parseISO(task.startDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 80, minWidth: 80, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 72, minWidth: 72, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.endDate ? format(parseISO(task.endDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 40, minWidth: 40, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: progress === 100 ? '#059669' : '#334155', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 36, minWidth: 36, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: progress === 100 ? '#059669' : '#334155', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {progress}%
                   </div>
-                  <div style={{ flex: 1, position: 'relative', minHeight: 28 }}>
+                  <div style={{ width: 100, minWidth: 100, padding: '5px 4px', borderRight: '1px solid #e2e8f0', color: '#64748b', fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {task.note || ''}
+                  </div>
+                  <div style={{ flex: 1, position: 'relative', minHeight: 32 }}>
                     {/* Grid lines */}
                     {months.map((m, i) => {
                       const mStart = differenceInDays(m, paddedStart);
