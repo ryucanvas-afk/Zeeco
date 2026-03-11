@@ -758,6 +758,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
       {showPdfPreview && (
         <SchedulePdfPreview
           project={project}
+          expandedGroups={expandedGroups}
           onClose={() => setShowPdfPreview(false)}
         />
       )}

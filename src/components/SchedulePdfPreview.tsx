@@ -6,6 +6,7 @@ import { differenceInDays, parseISO, isValid, startOfMonth, endOfMonth, eachMont
 
 interface SchedulePdfPreviewProps {
   project: Project;
+  expandedGroups: Set<string>;
   onClose: () => void;
 }
 
@@ -13,7 +14,7 @@ type PaperSize = 'a4' | 'a3';
 
 const PAPER_LABELS: Record<PaperSize, string> = { a4: 'A4 가로', a3: 'A3 가로' };
 
-export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPreviewProps) {
+export default function SchedulePdfPreview({ project, expandedGroups, onClose }: SchedulePdfPreviewProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
@@ -88,14 +89,17 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
     return { start: minDate, end: maxDate };
   }, [tasks, getChildren, hasChildren]);
 
-  // Flatten tasks for rendering (recursive)
+  // Flatten tasks for rendering (recursive), respecting collapsed state
   const flatTasks: { task: MasterScheduleTask; level: number; isGroup: boolean }[] = [];
   const flatten = (parentId: string, level: number) => {
     const children = parentId ? getChildren(parentId) : rootTasks;
     children.forEach(t => {
       const isGroup = hasChildren(t.id) || (!t.parentId);
       flatTasks.push({ task: t, level, isGroup });
-      flatten(t.id, level + 1);
+      // Only include children if this group is expanded
+      if (expandedGroups.has(t.id)) {
+        flatten(t.id, level + 1);
+      }
     });
   };
   flatten('', 0);
@@ -266,7 +270,12 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
                 <div key={task.id} style={{ display: 'flex', fontSize: 11, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#f1f5f9' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                   <div style={{ width: 260, minWidth: 260, padding: '5px 8px', paddingLeft: 8 + level * 18, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5, fontSize: isGroup && level === 0 ? 12 : 11 }}>
                     {isGroup ? (
-                      <span style={{ color: task.color || '#6366f1', fontSize: 10 }}>■</span>
+                      <>
+                        <span style={{ color: task.color || '#6366f1', fontSize: 10 }}>■</span>
+                        {hasChildren(task.id) && !expandedGroups.has(task.id) && (
+                          <span style={{ fontSize: 8, color: '#94a3b8' }}>▶</span>
+                        )}
+                      </>
                     ) : (
                       <span style={{ color: task.color || '#6366f1', fontSize: 8 }}>●</span>
                     )}
