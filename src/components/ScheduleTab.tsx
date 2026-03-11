@@ -466,6 +466,8 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
             <div className="ms-row-note">
               <EditableCell
                 value={task.note || ''}
+                type="multiline"
+                placeholder="-"
                 onSave={v => handleUpdate(task.id, 'note', v)}
               />
             </div>
