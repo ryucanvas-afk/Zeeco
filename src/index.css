@@ -5941,8 +5941,8 @@ body {
 }
 
 .ms-header-info {
-  min-width: 680px;
-  width: 680px;
+  min-width: 780px;
+  width: 780px;
   display: flex;
   align-items: center;
   padding: 10px 12px;
@@ -5968,7 +5968,8 @@ body {
 }
 
 .ms-header-dates {
-  width: 200px;
+  width: 320px;
+  min-width: 320px;
   text-align: center;
 }
 
@@ -5978,7 +5979,7 @@ body {
 }
 
 .ms-header-note {
-  width: 180px;
+  width: 140px;
   text-align: center;
 }
 
@@ -5987,7 +5988,8 @@ body {
 }
 
 .ms-header-info-full .ms-header-dates {
-  width: 220px;
+  width: 340px;
+  min-width: 340px;
 }
 
 .ms-header-info-full .ms-header-progress {
@@ -5996,7 +5998,7 @@ body {
 
 .ms-header-info-full .ms-header-note {
   flex: 1;
-  min-width: 200px;
+  min-width: 140px;
 }
 
 .ms-header-act {
@@ -6051,8 +6053,8 @@ body {
 }
 
 .ms-row-info {
-  min-width: 680px;
-  width: 680px;
+  min-width: 780px;
+  width: 780px;
   display: flex;
   align-items: center;
   padding: 7px 12px;
@@ -6116,17 +6118,25 @@ body {
 }
 
 .ms-row-dates {
-  width: 200px;
+  width: 320px;
+  min-width: 320px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   font-size: 12px;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ms-row-info-full .ms-row-dates {
-  width: 220px;
+  width: 340px;
+  min-width: 340px;
+}
+
+.ms-row-dates .editable-cell {
+  white-space: nowrap;
 }
 
 .ms-date-sep {
@@ -6162,17 +6172,18 @@ body {
 }
 
 .ms-row-note {
-  width: 180px;
+  width: 140px;
   display: flex;
-  align-items: center;
-  font-size: 12px;
+  align-items: flex-start;
+  padding-top: 4px;
+  font-size: 11px;
   color: var(--text-secondary);
   overflow: hidden;
 }
 
 .ms-row-info-full .ms-row-note {
   flex: 1;
-  min-width: 200px;
+  min-width: 140px;
 }
 
 .ms-row-note .editable-cell {
@@ -6181,17 +6192,34 @@ body {
 }
 
 .ms-row-note .editable-cell span {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.4;
   opacity: 0.7;
   font-style: italic;
+  word-break: break-all;
 }
 
-.ms-row-note .editable-cell input {
+.ms-row-note .editable-cell .editable-cell-multiline span {
+  white-space: pre-wrap;
+}
+
+.ms-row-note .editable-textarea-input {
   width: 100%;
-  font-size: 12px;
+  font-size: 11px;
+  min-height: 36px;
+  resize: vertical;
+  line-height: 1.4;
+  padding: 3px 6px;
+}
+
+.ms-row-note .editable-text-input {
+  width: 100%;
+  font-size: 11px;
 }
 
 .ms-row-actions {
@@ -6373,6 +6401,79 @@ body {
 .ms-color-swatch.active {
   border-color: #fff;
   box-shadow: 0 0 0 2px var(--accent-blue), 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Drag and Drop */
+.ms-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.35;
+  transition: opacity 0.15s, color 0.15s;
+  user-select: none;
+  flex-shrink: 0;
+  letter-spacing: -1px;
+}
+
+.ms-row:hover .ms-drag-handle {
+  opacity: 0.7;
+}
+
+.ms-drag-handle:hover {
+  opacity: 1 !important;
+  color: var(--accent-blue);
+}
+
+.ms-dragging {
+  opacity: 0.4;
+  background: rgba(59, 130, 246, 0.06) !important;
+}
+
+.ms-drag-above {
+  box-shadow: inset 0 2px 0 0 var(--accent-blue);
+}
+
+.ms-drag-below {
+  box-shadow: inset 0 -2px 0 0 var(--accent-blue);
+}
+
+/* Inline add form */
+.ms-row-inline-add {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(59, 130, 246, 0.04);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.12);
+}
+
+.ms-inline-add-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.ms-inline-add-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 5px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+}
+
+.ms-inline-add-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.ms-inline-add-btn {
+  white-space: nowrap;
 }
 
 /* PDF page */

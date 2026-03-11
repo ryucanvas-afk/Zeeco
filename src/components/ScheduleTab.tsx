@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react';
 import type { Project, MasterScheduleTask } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
@@ -31,11 +31,16 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const [formType, setFormType] = useState<'group' | 'task'>('group');
   const [formParentId, setFormParentId] = useState('');
   const [formData, setFormData] = useState({ name: '', startDate: '', endDate: '', color: GROUP_COLORS[0] });
+  const [inlineAddParentId, setInlineAddParentId] = useState<string | null>(null);
+  const [inlineAddName, setInlineAddName] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapshotName, setSnapshotName] = useState('');
   const [showGantt, setShowGantt] = useState(false);
+  const [dragTaskId, setDragTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
 
   const tasks = project.masterSchedule || [];
@@ -122,16 +127,41 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   };
 
   const handleAddTask = (parentId: string) => {
-    setFormType('task');
-    setFormParentId(parentId);
+    setInlineAddParentId(parentId);
+    setInlineAddName('');
+    // Expand the parent so we can see the inline form
+    setExpandedGroups(prev => new Set(prev).add(parentId));
+  };
+
+  const handleInlineAddSubmit = (parentId: string) => {
+    if (!inlineAddName.trim()) return;
     const parent = tasks.find(t => t.id === parentId);
-    setFormData({
-      name: '',
+    const siblings = getChildren(parentId);
+    const maxOrder = siblings.reduce((max, t) => Math.max(max, t.sortOrder), -1);
+    addMasterTask(project.id, {
+      parentId,
+      name: inlineAddName.trim(),
       startDate: parent?.startDate || getToday(),
       endDate: parent?.endDate || '',
+      duration: 0,
+      progress: 0,
       color: parent?.color || GROUP_COLORS[0],
+      expanded: true,
+      sortOrder: maxOrder + 1,
+      note: '',
     });
-    setShowForm(true);
+    setInlineAddName('');
+    // Keep inline form open for quick consecutive adds
+  };
+
+  const handleInlineAddKeyDown = (e: React.KeyboardEvent, parentId: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleInlineAddSubmit(parentId);
+    } else if (e.key === 'Escape') {
+      setInlineAddParentId(null);
+      setInlineAddName('');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -170,6 +200,87 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
 
   const handleDelete = (taskId: string) => {
     deleteMasterTask(project.id, taskId);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
+    setDragTaskId(taskId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
+    // Make the drag image slightly transparent
+    if (e.currentTarget) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
+    e.currentTarget.style.opacity = '1';
+    setDragTaskId(null);
+    setDragOverTaskId(null);
+    setDragOverPosition(null);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, taskId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (!dragTaskId || dragTaskId === taskId) return;
+
+    const dragTask = tasks.find(t => t.id === dragTaskId);
+    const overTask = tasks.find(t => t.id === taskId);
+    if (!dragTask || !overTask) return;
+
+    // Only allow reordering within the same parent
+    if (dragTask.parentId !== overTask.parentId) return;
+
+    // Determine above/below based on mouse position
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? 'above' : 'below';
+
+    setDragOverTaskId(taskId);
+    setDragOverPosition(position);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTaskId(null);
+    setDragOverPosition(null);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetTaskId: string) => {
+    e.preventDefault();
+    if (!dragTaskId || dragTaskId === targetTaskId) return;
+
+    const dragTask = tasks.find(t => t.id === dragTaskId);
+    const targetTask = tasks.find(t => t.id === targetTaskId);
+    if (!dragTask || !targetTask) return;
+
+    // Only reorder within the same parent
+    if (dragTask.parentId !== targetTask.parentId) return;
+
+    const parentId = dragTask.parentId;
+    const siblings = parentId ? getChildren(parentId) : rootTasks;
+    const orderedIds = siblings.map(t => t.id);
+
+    // Remove dragged item from list
+    const fromIndex = orderedIds.indexOf(dragTaskId);
+    if (fromIndex === -1) return;
+    orderedIds.splice(fromIndex, 1);
+
+    // Insert at the target position
+    let toIndex = orderedIds.indexOf(targetTaskId);
+    if (toIndex === -1) return;
+    if (dragOverPosition === 'below') toIndex++;
+    orderedIds.splice(toIndex, 0, dragTaskId);
+
+    // Update sortOrder for all siblings
+    orderedIds.forEach((id, idx) => {
+      updateMasterTask(project.id, id, { sortOrder: idx });
+    });
+
+    setDragTaskId(null);
+    setDragOverTaskId(null);
+    setDragOverPosition(null);
   };
 
   // Compute group progress from all descendants recursively
@@ -270,11 +381,25 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     const isGroup = isGroupNode(task);
     const groupProgress = isGroup ? getGroupProgress(task.id) : task.progress;
 
+    const isDragOver = dragOverTaskId === task.id;
+    const dragClass = isDragOver && dragOverPosition
+      ? `ms-drag-${dragOverPosition}`
+      : '';
+
     return (
       <div key={task.id}>
-        <div className={`ms-row ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 4)}`}>
+        <div
+          className={`ms-row ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 4)} ${dragClass} ${dragTaskId === task.id ? 'ms-dragging' : ''}`}
+          draggable
+          onDragStart={e => handleDragStart(e, task.id)}
+          onDragEnd={handleDragEnd}
+          onDragOver={e => handleDragOver(e, task.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={e => handleDrop(e, task.id)}
+        >
           <div className={`ms-row-info ${showGantt ? '' : 'ms-row-info-full'}`}>
             <div className="ms-row-name" style={{ paddingLeft: level * 24 }}>
+              <span className="ms-drag-handle" title="드래그하여 순서 변경">⠿</span>
               {(isGroup || children.length > 0) && (
                 <button className="ms-expand-btn" onClick={() => toggleExpand(task.id)}>
                   {isExpanded ? '▼' : '▶'}
@@ -341,6 +466,8 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
             <div className="ms-row-note">
               <EditableCell
                 value={task.note || ''}
+                type="multiline"
+                placeholder="-"
                 onSave={v => handleUpdate(task.id, 'note', v)}
               />
             </div>
@@ -358,6 +485,36 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
         </div>
         {/* Children (recursive) */}
         {isExpanded && children.map(child => renderTaskRow(child, level + 1))}
+        {/* Inline add form */}
+        {isExpanded && inlineAddParentId === task.id && (
+          <div className="ms-row ms-row-inline-add" style={{ paddingLeft: (level + 1) * 24 + 12 }}>
+            <div className="ms-inline-add-form">
+              <span className="ms-task-dot" style={{ backgroundColor: task.color || '#6366f1' }} />
+              <input
+                type="text"
+                className="ms-inline-add-input"
+                placeholder="하위 작업명 입력 후 Enter (Esc: 취소)"
+                value={inlineAddName}
+                onChange={e => setInlineAddName(e.target.value)}
+                onKeyDown={e => handleInlineAddKeyDown(e, task.id)}
+                autoFocus
+              />
+              <button
+                className="btn btn-primary btn-sm ms-inline-add-btn"
+                onClick={() => handleInlineAddSubmit(task.id)}
+                disabled={!inlineAddName.trim()}
+              >
+                추가
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => { setInlineAddParentId(null); setInlineAddName(''); }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
