@@ -75,6 +75,7 @@ export interface Project {
   factoryPurchases: FactoryPurchase[];
   budgetSnapshots: BudgetSnapshot[];
   masterSchedule: MasterScheduleTask[];
+  scheduleSnapshots: ScheduleSnapshot[];
 }
 
 export interface ProjectItem {
@@ -174,6 +175,13 @@ export interface MasterScheduleTask {
   color: string;
   expanded: boolean;
   sortOrder: number;
+}
+
+export interface ScheduleSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  tasks: MasterScheduleTask[];
 }
 
 // Budget Management Types

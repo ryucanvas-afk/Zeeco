@@ -26,13 +26,15 @@ function computeDuration(start: string, end: string): number {
 }
 
 export default function ScheduleTab({ project }: ScheduleTabProps) {
-  const { addMasterTask, updateMasterTask, deleteMasterTask } = useProjects();
+  const { addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'group' | 'task'>('group');
   const [formParentId, setFormParentId] = useState('');
   const [formData, setFormData] = useState({ name: '', startDate: '', endDate: '', color: GROUP_COLORS[0] });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [showSnapshots, setShowSnapshots] = useState(false);
+  const [snapshotName, setSnapshotName] = useState('');
   const ganttRef = useRef<HTMLDivElement>(null);
 
   const tasks = project.masterSchedule || [];
@@ -320,6 +322,9 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
             <button className="btn btn-secondary btn-sm" onClick={expandAll}>모두 펼치기</button>
             <button className="btn btn-secondary btn-sm" onClick={collapseAll}>모두 접기</button>
             <button className="btn btn-primary btn-sm" onClick={handleAddGroup}>+ 그룹 추가</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowSnapshots(!showSnapshots)}>
+              CASE 관리 {(project.scheduleSnapshots || []).length > 0 ? `(${(project.scheduleSnapshots || []).length})` : ''}
+            </button>
             <button className="btn btn-accent btn-sm" onClick={() => setShowPdfPreview(true)}>PDF 추출</button>
           </div>
         </div>
@@ -360,6 +365,71 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>취소</button>
             </div>
           </form>
+        )}
+
+        {/* CASE (Snapshot) Panel */}
+        {showSnapshots && (
+          <div className="ms-snapshot-panel">
+            <div className="ms-snapshot-save">
+              <input
+                type="text"
+                className="ms-snapshot-input"
+                placeholder="CASE 이름 (예: Rev.A, 초기안, 2차 수정안)"
+                value={snapshotName}
+                onChange={e => setSnapshotName(e.target.value)}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={!snapshotName.trim() || tasks.length === 0}
+                onClick={() => {
+                  saveScheduleSnapshot(project.id, snapshotName.trim());
+                  setSnapshotName('');
+                }}
+              >
+                현재 일정 저장
+              </button>
+            </div>
+            {(project.scheduleSnapshots || []).length > 0 ? (
+              <div className="ms-snapshot-list">
+                {(project.scheduleSnapshots || []).map(snap => (
+                  <div key={snap.id} className="ms-snapshot-card">
+                    <div className="ms-snapshot-card-info">
+                      <strong>{snap.name}</strong>
+                      <span className="ms-snapshot-date">
+                        {new Date(snap.createdAt).toLocaleDateString('ko-KR')} {new Date(snap.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="ms-snapshot-count">{snap.tasks.length}개 작업</span>
+                    </div>
+                    <div className="ms-snapshot-card-actions">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          if (confirm(`"${snap.name}" CASE를 불러오시겠습니까? 현재 일정이 대체됩니다.`)) {
+                            loadScheduleSnapshot(project.id, snap.id);
+                          }
+                        }}
+                      >
+                        불러오기
+                      </button>
+                      <button
+                        className="btn-icon btn-danger"
+                        onClick={() => {
+                          if (confirm(`"${snap.name}" CASE를 삭제하시겠습니까?`)) {
+                            deleteScheduleSnapshot(project.id, snap.id);
+                          }
+                        }}
+                        title="삭제"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="ms-snapshot-empty">저장된 CASE가 없습니다. 현재 일정을 저장하여 여러 버전을 관리하세요.</p>
+            )}
+          </div>
         )}
 
         {tasks.length > 0 && (

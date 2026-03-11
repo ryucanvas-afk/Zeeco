@@ -9,9 +9,14 @@ interface SchedulePdfPreviewProps {
   onClose: () => void;
 }
 
+type PaperSize = 'a4' | 'a3';
+
+const PAPER_LABELS: Record<PaperSize, string> = { a4: 'A4 가로', a3: 'A3 가로' };
+
 export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPreviewProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [paperSize, setPaperSize] = useState<PaperSize>('a4');
 
   const tasks = project.masterSchedule || [];
   const rootTasks = tasks.filter(t => !t.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -91,7 +96,7 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
         backgroundColor: '#ffffff',
       });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: paperSize });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
@@ -139,7 +144,7 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
         }
       }
 
-      pdf.save(`${project.name}_Master_Schedule.pdf`);
+      pdf.save(`${project.name}_Master_Schedule_${paperSize.toUpperCase()}.pdf`);
     } finally {
       setExporting(false);
     }
@@ -165,9 +170,9 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
     const progress = isGroup ? getGroupProgress(task.id) : task.progress;
 
     return (
-      <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 10 : 14, top: isGroup ? 7 : 5, borderRadius: isGroup ? 2 : 4, backgroundColor: task.color || '#6366f1', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 10 : 16, top: isGroup ? 9 : 6, borderRadius: isGroup ? 2 : 4, backgroundColor: task.color || '#6366f1', overflow: 'hidden', boxShadow: isGroup ? 'none' : '0 1px 2px rgba(0,0,0,0.1)' }}>
         {!isGroup && progress > 0 && (
-          <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'rgba(255,255,255,0.3)' }} />
+          <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'rgba(255,255,255,0.35)' }} />
         )}
       </div>
     );
@@ -179,8 +184,19 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
         <div className="pdf-preview-header">
           <span className="pdf-preview-title">Master Schedule PDF 미리보기</span>
           <div className="pdf-preview-actions">
+            <div className="ms-paper-selector">
+              {(['a4', 'a3'] as PaperSize[]).map(size => (
+                <button
+                  key={size}
+                  className={`btn btn-sm ${paperSize === size ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setPaperSize(size)}
+                >
+                  {PAPER_LABELS[size]}
+                </button>
+              ))}
+            </div>
             <button className="btn btn-primary" onClick={handleExportPdf} disabled={exporting}>
-              {exporting ? 'PDF 생성 중...' : 'PDF 다운로드'}
+              {exporting ? 'PDF 생성 중...' : `PDF 다운로드 (${paperSize.toUpperCase()})`}
             </button>
             <button className="btn btn-secondary" onClick={onClose}>닫기</button>
           </div>
@@ -189,23 +205,23 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
         <div className="pdf-preview-scroll">
           <div className="ms-pdf-page" ref={printRef}>
             {/* Page header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #1e293b', paddingBottom: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '3px solid #0f172a', paddingBottom: 10, marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{project.name}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Master Schedule</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>{project.name}</div>
+                <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginTop: 2 }}>Master Schedule</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                {project.projectNo && <div style={{ fontSize: 11, color: '#64748b' }}>Project No. {project.projectNo}</div>}
-                <div style={{ fontSize: 11, color: '#64748b' }}>Rev. {format(new Date(), 'yyyy-MM-dd')}</div>
+                {project.projectNo && <div style={{ fontSize: 12, color: '#475569', fontWeight: 600, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>Project No. {project.projectNo}</div>}
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Rev. {format(new Date(), 'yyyy-MM-dd')}</div>
               </div>
             </div>
 
             {/* Gantt Table */}
-            <div style={{ display: 'flex', fontSize: 10, borderBottom: '2px solid #334155', fontWeight: 600, color: '#334155' }}>
-              <div style={{ width: 260, minWidth: 260, padding: '4px 6px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
-              <div style={{ width: 75, minWidth: 75, padding: '4px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
-              <div style={{ width: 75, minWidth: 75, padding: '4px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
-              <div style={{ width: 35, minWidth: 35, padding: '4px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
+            <div style={{ display: 'flex', fontSize: 11, borderBottom: '2px solid #1e293b', fontWeight: 700, color: '#1e293b', letterSpacing: '0.3px' }}>
+              <div style={{ width: 280, minWidth: 280, padding: '6px 8px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
+              <div style={{ width: 80, minWidth: 80, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
+              <div style={{ width: 80, minWidth: 80, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
+              <div style={{ width: 40, minWidth: 40, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
               <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
                 {months.map((m, i) => {
                   const mStart = differenceInDays(m, paddedStart);
@@ -213,7 +229,7 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
                   const left = (mStart / totalDays) * 100;
                   const width = ((mEnd - mStart + 1) / totalDays) * 100;
                   return (
-                    <div key={i} style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, textAlign: 'center', padding: '4px 0', borderLeft: '1px solid #e2e8f0', fontSize: 9 }}>
+                    <div key={i} style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #e2e8f0', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace", fontWeight: 600 }}>
                       {format(m, 'yy.MM')}
                     </div>
                   );
@@ -225,25 +241,25 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
             {flatTasks.map(({ task, level, isGroup }, idx) => {
               const progress = isGroup ? getGroupProgress(task.id) : task.progress;
               return (
-                <div key={task.id} style={{ display: 'flex', fontSize: 10, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#f8fafc' : idx % 2 === 0 ? '#ffffff' : '#fafbfc' }}>
-                  <div style={{ width: 260, minWidth: 260, padding: '3px 6px', paddingLeft: 6 + level * 16, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#1e293b' : '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div key={task.id} style={{ display: 'flex', fontSize: 11, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#f1f5f9' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                  <div style={{ width: 280, minWidth: 280, padding: '5px 8px', paddingLeft: 8 + level * 18, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5, fontSize: isGroup && level === 0 ? 12 : 11 }}>
                     {isGroup ? (
-                      <span style={{ color: task.color || '#6366f1', fontSize: 8 }}>■</span>
+                      <span style={{ color: task.color || '#6366f1', fontSize: 10 }}>■</span>
                     ) : (
-                      <span style={{ color: task.color || '#6366f1', fontSize: 6 }}>●</span>
+                      <span style={{ color: task.color || '#6366f1', fontSize: 8 }}>●</span>
                     )}
                     {task.name}
                   </div>
-                  <div style={{ width: 75, minWidth: 75, padding: '3px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b', fontSize: 9 }}>
+                  <div style={{ width: 80, minWidth: 80, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.startDate ? format(parseISO(task.startDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 75, minWidth: 75, padding: '3px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b', fontSize: 9 }}>
+                  <div style={{ width: 80, minWidth: 80, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.endDate ? format(parseISO(task.endDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 35, minWidth: 35, padding: '3px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 600, color: progress === 100 ? '#10b981' : '#475569' }}>
+                  <div style={{ width: 40, minWidth: 40, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: progress === 100 ? '#059669' : '#334155', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {progress}%
                   </div>
-                  <div style={{ flex: 1, position: 'relative', minHeight: 24 }}>
+                  <div style={{ flex: 1, position: 'relative', minHeight: 28 }}>
                     {/* Grid lines */}
                     {months.map((m, i) => {
                       const mStart = differenceInDays(m, paddedStart);
@@ -260,17 +276,17 @@ export default function SchedulePdfPreview({ project, onClose }: SchedulePdfPrev
             })}
 
             {/* Legend + Footer */}
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span>■ Group Task</span>
-                <span>● Sub Task</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                  <span style={{ width: 12, height: 2, backgroundColor: '#ef4444', display: 'inline-block' }} />
+            <div style={{ marginTop: 20, paddingTop: 10, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#64748b' }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#6366f1', fontSize: 10 }}>■</span> Group Task</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#6366f1', fontSize: 8 }}>●</span> Sub Task</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 14, height: 2, backgroundColor: '#ef4444', display: 'inline-block', borderRadius: 1 }} />
                   Today ({format(new Date(), 'yyyy-MM-dd')})
                 </span>
               </div>
-              <div>
-                Generated on {new Date().toLocaleDateString('ko-KR')} | ZEECO Asia | {project.name}
+              <div style={{ fontWeight: 500 }}>
+                ZEECO Asia | {project.name} | {new Date().toLocaleDateString('ko-KR')}
               </div>
             </div>
           </div>

@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot, MasterScheduleTask } from '../types';
+import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot, MasterScheduleTask, ScheduleSnapshot } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -86,6 +86,7 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
     budgetSnapshots: (p.budgetSnapshots as Project['budgetSnapshots']) || [],
     masterSchedule: (p.masterSchedule as Project['masterSchedule']) || [],
+    scheduleSnapshots: (p.scheduleSnapshots as Project['scheduleSnapshots']) || [],
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
       projectId: (i.projectId as string) || (p.id as string) || '',
@@ -186,6 +187,9 @@ interface ProjectContextType {
   updateMasterTask: (projectId: string, taskId: string, updates: Partial<MasterScheduleTask>) => void;
   deleteMasterTask: (projectId: string, taskId: string) => void;
   reorderMasterTasks: (projectId: string, taskIds: string[]) => void;
+  saveScheduleSnapshot: (projectId: string, name: string) => void;
+  loadScheduleSnapshot: (projectId: string, snapshotId: string) => void;
+  deleteScheduleSnapshot: (projectId: string, snapshotId: string) => void;
   reorderProjects: (projectIds: string[]) => void;
   reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
@@ -233,7 +237,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'factoryPurchases'>) => {
-    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [] }]);
+    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [], scheduleSnapshots: [] }]);
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {
@@ -582,6 +586,35 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const saveScheduleSnapshot = (projectId: string, name: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const snapshot: ScheduleSnapshot = {
+        id: uuidv4(),
+        name,
+        createdAt: new Date().toISOString(),
+        tasks: JSON.parse(JSON.stringify(p.masterSchedule || [])),
+      };
+      return { ...p, scheduleSnapshots: [...(p.scheduleSnapshots || []), snapshot] };
+    }));
+  };
+
+  const loadScheduleSnapshot = (projectId: string, snapshotId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const snapshot = (p.scheduleSnapshots || []).find(s => s.id === snapshotId);
+      if (!snapshot) return p;
+      return { ...p, masterSchedule: JSON.parse(JSON.stringify(snapshot.tasks)) };
+    }));
+  };
+
+  const deleteScheduleSnapshot = (projectId: string, snapshotId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return { ...p, scheduleSnapshots: (p.scheduleSnapshots || []).filter(s => s.id !== snapshotId) };
+    }));
+  };
+
   const reorderBudgetItems = (projectId: string, budgetItemIds: string[]) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -607,6 +640,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
       saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot,
       addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
+      saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot,
       reorderProjects, reorderItems,
       importData, resetData,
     }}>
