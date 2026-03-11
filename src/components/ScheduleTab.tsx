@@ -138,12 +138,14 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     const parent = tasks.find(t => t.id === parentId);
     const siblings = getChildren(parentId);
     const maxOrder = siblings.reduce((max, t) => Math.max(max, t.sortOrder), -1);
+    const newStart = parent?.startDate || getToday();
+    const newEnd = parent?.endDate || '';
     addMasterTask(project.id, {
       parentId,
       name: inlineAddName.trim(),
-      startDate: parent?.startDate || getToday(),
-      endDate: parent?.endDate || '',
-      duration: 0,
+      startDate: newStart,
+      endDate: newEnd,
+      duration: computeDuration(newStart, newEnd),
       progress: 0,
       color: parent?.color || GROUP_COLORS[0],
       expanded: true,
@@ -186,6 +188,44 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     }
   };
 
+  // Propagate date changes upward: recalculate all ancestors' dates from their descendants
+  const propagateParentDates = useCallback((childId: string, currentTasks: MasterScheduleTask[]) => {
+    const taskMap = new Map(currentTasks.map(t => [t.id, t]));
+    const getKids = (pid: string) => currentTasks.filter(t => t.parentId === pid);
+
+    const computeRange = (parentId: string): { start: string; end: string } => {
+      let minDate = '';
+      let maxDate = '';
+      const walk = (pid: string) => {
+        const kids = getKids(pid);
+        kids.forEach(c => {
+          if (c.startDate && (!minDate || c.startDate < minDate)) minDate = c.startDate;
+          if (c.endDate && (!maxDate || c.endDate > maxDate)) maxDate = c.endDate;
+          if (getKids(c.id).length > 0) walk(c.id);
+        });
+      };
+      walk(parentId);
+      return { start: minDate, end: maxDate };
+    };
+
+    let current = taskMap.get(childId);
+    if (!current) return;
+    let parentId = current.parentId;
+    while (parentId) {
+      const range = computeRange(parentId);
+      if (range.start || range.end) {
+        const dur = (range.start && range.end) ? computeDuration(range.start, range.end) : 0;
+        updateMasterTask(project.id, parentId, {
+          startDate: range.start,
+          endDate: range.end,
+          duration: dur,
+        });
+      }
+      const parent = taskMap.get(parentId);
+      parentId = parent?.parentId || '';
+    }
+  }, [project.id, updateMasterTask]);
+
   const handleUpdate = (taskId: string, field: string, value: string | number) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -196,6 +236,13 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
       updates.duration = computeDuration(start, end);
     }
     updateMasterTask(project.id, taskId, updates);
+
+    // If date changed and this task has a parent, propagate upward
+    if ((field === 'startDate' || field === 'endDate') && task.parentId) {
+      // Build updated tasks array with the change applied
+      const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, ...updates } : t);
+      propagateParentDates(taskId, updatedTasks);
+    }
   };
 
   const handleDelete = (taskId: string) => {
@@ -389,7 +436,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     return (
       <div key={task.id}>
         <div
-          className={`ms-row ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 4)} ${dragClass} ${dragTaskId === task.id ? 'ms-dragging' : ''}`}
+          className={`ms-row-wrapper ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 4)} ${dragClass} ${dragTaskId === task.id ? 'ms-dragging' : ''}`}
           draggable
           onDragStart={e => handleDragStart(e, task.id)}
           onDragEnd={handleDragEnd}
@@ -397,91 +444,110 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
           onDragLeave={handleDragLeave}
           onDrop={e => handleDrop(e, task.id)}
         >
-          <div className={`ms-row-info ${showGantt ? '' : 'ms-row-info-full'}`}>
-            <div className="ms-row-name" style={{ paddingLeft: level * 24 }}>
-              <span className="ms-drag-handle" title="드래그하여 순서 변경">⠿</span>
-              {(isGroup || children.length > 0) && (
-                <button className="ms-expand-btn" onClick={() => toggleExpand(task.id)}>
-                  {isExpanded ? '▼' : '▶'}
-                </button>
-              )}
-              {!isGroup && children.length === 0 && <span className="ms-task-dot" style={{ backgroundColor: task.color || '#6366f1' }} />}
-              <EditableCell
-                value={task.name}
-                onSave={v => handleUpdate(task.id, 'name', v)}
-              />
-            </div>
-            <div className="ms-row-dates">
-              <EditableCell
-                value={task.startDate}
-                type="date"
-                onSave={v => handleUpdate(task.id, 'startDate', v)}
-              />
-              <span className="ms-date-sep">~</span>
-              <EditableCell
-                value={task.endDate}
-                type="date"
-                onSave={v => handleUpdate(task.id, 'endDate', v)}
-              />
-              <input
-                className="ms-duration-input"
-                type="number"
-                min="0"
-                placeholder="일"
-                title="시작일 기준 기간(일) 입력시 종료일 자동 설정"
-                value={task.duration || ''}
-                onChange={e => {
-                  const days = Number(e.target.value);
-                  if (days >= 0 && task.startDate) {
-                    const endDate = format(addDays(parseISO(task.startDate), days), 'yyyy-MM-dd');
-                    updateMasterTask(project.id, task.id, {
-                      duration: days,
-                      endDate,
-                    });
-                  }
-                }}
-              />
-              <span className="ms-duration-label">일</span>
-            </div>
-            <div className="ms-row-progress">
-              {isGroup ? (
-                <span className="ms-progress-text">{groupProgress}%</span>
-              ) : (
+          <div className="ms-row">
+            <div className={`ms-row-info ${showGantt ? '' : 'ms-row-info-full'}`}>
+              <div className="ms-row-name" style={{ paddingLeft: level * 24 }}>
+                <span className="ms-drag-handle" title="드래그하여 순서 변경">⠿</span>
+                {(isGroup || children.length > 0) && (
+                  <button className="ms-expand-btn" onClick={() => toggleExpand(task.id)}>
+                    {isExpanded ? '▼' : '▶'}
+                  </button>
+                )}
+                {!isGroup && children.length === 0 && <span className="ms-task-dot" style={{ backgroundColor: task.color || '#6366f1' }} />}
                 <EditableCell
-                  value={String(task.progress)}
-                  type="number"
-                  onSave={v => handleUpdate(task.id, 'progress', Math.min(100, Math.max(0, Number(v))))}
-                />
-              )}
-              <div className="progress-bar-bg ms-progress-bar">
-                <div
-                  className="progress-bar-fill"
-                  style={{
-                    width: `${isGroup ? groupProgress : task.progress}%`,
-                    backgroundColor: (isGroup ? groupProgress : task.progress) === 100 ? '#10b981' : task.color || '#6366f1',
-                  }}
+                  value={task.name}
+                  onSave={v => handleUpdate(task.id, 'name', v)}
                 />
               </div>
+              <div className="ms-row-dates">
+                {isGroup && children.length > 0 ? (
+                  <>
+                    <span className="ms-computed-date" title="하위 항목 기준 자동 산정">{task.startDate || '-'}</span>
+                    <span className="ms-date-sep">~</span>
+                    <span className="ms-computed-date" title="하위 항목 기준 자동 산정">{task.endDate || '-'}</span>
+                    <span className="ms-duration-computed" title="하위 항목 기준 자동 산정">{task.duration || 0}일</span>
+                  </>
+                ) : (
+                  <>
+                    <EditableCell
+                      value={task.startDate}
+                      type="date"
+                      onSave={v => handleUpdate(task.id, 'startDate', v)}
+                    />
+                    <span className="ms-date-sep">~</span>
+                    <EditableCell
+                      value={task.endDate}
+                      type="date"
+                      onSave={v => handleUpdate(task.id, 'endDate', v)}
+                    />
+                    <input
+                      className="ms-duration-input"
+                      type="number"
+                      min="0"
+                      placeholder="일"
+                      title="시작일 기준 기간(일) 입력시 종료일 자동 설정"
+                      value={task.duration || ''}
+                      onChange={e => {
+                        const days = Number(e.target.value);
+                        if (days >= 0 && task.startDate) {
+                          const endDate = format(addDays(parseISO(task.startDate), days), 'yyyy-MM-dd');
+                          updateMasterTask(project.id, task.id, {
+                            duration: days,
+                            endDate,
+                          });
+                          // Propagate to parents
+                          if (task.parentId) {
+                            const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, endDate, duration: days } : t);
+                            propagateParentDates(task.id, updatedTasks);
+                          }
+                        }
+                      }}
+                    />
+                    <span className="ms-duration-label">일</span>
+                  </>
+                )}
+              </div>
+              <div className="ms-row-progress">
+                {isGroup ? (
+                  <span className="ms-progress-text">{groupProgress}%</span>
+                ) : (
+                  <EditableCell
+                    value={String(task.progress)}
+                    type="number"
+                    onSave={v => handleUpdate(task.id, 'progress', Math.min(100, Math.max(0, Number(v))))}
+                  />
+                )}
+                <div className="progress-bar-bg ms-progress-bar">
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: `${isGroup ? groupProgress : task.progress}%`,
+                      backgroundColor: (isGroup ? groupProgress : task.progress) === 100 ? '#10b981' : task.color || '#6366f1',
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="ms-row-actions">
+                <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
+                <button className="btn-icon btn-danger ms-btn-del" onClick={() => handleDelete(task.id)} title="삭제">✕</button>
+              </div>
             </div>
-            <div className="ms-row-note">
-              <EditableCell
-                value={task.note || ''}
-                type="multiline"
-                placeholder="-"
-                onSave={v => handleUpdate(task.id, 'note', v)}
-              />
-            </div>
-            <div className="ms-row-actions">
-              <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
-              <button className="btn-icon btn-danger ms-btn-del" onClick={() => handleDelete(task.id)} title="삭제">✕</button>
-            </div>
+            {/* Right: Gantt bar (only shown when toggled) */}
+            {showGantt && (
+              <div className="ms-row-gantt">
+                {renderGanttBar(task, isGroup)}
+              </div>
+            )}
           </div>
-          {/* Right: Gantt bar (only shown when toggled) */}
-          {showGantt && (
-            <div className="ms-row-gantt">
-              {renderGanttBar(task, isGroup)}
-            </div>
-          )}
+          {/* Note: full-width row below, separated by thin line */}
+          <div className="ms-row-note-full">
+            <EditableCell
+              value={task.note || ''}
+              type="multiline"
+              placeholder="메모 입력..."
+              onSave={v => handleUpdate(task.id, 'note', v)}
+            />
+          </div>
         </div>
         {/* Children (recursive) */}
         {isExpanded && children.map(child => renderTaskRow(child, level + 1))}
@@ -657,7 +723,6 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               <span className="ms-header-name">작업</span>
               <span className="ms-header-dates">기간</span>
               <span className="ms-header-progress">진행률</span>
-              <span className="ms-header-note">Note</span>
               <span className="ms-header-act"></span>
             </div>
             {showGantt && (

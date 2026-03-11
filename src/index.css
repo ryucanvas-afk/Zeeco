@@ -5941,8 +5941,8 @@ body {
 }
 
 .ms-header-info {
-  min-width: 780px;
-  width: 780px;
+  min-width: 680px;
+  width: 680px;
   display: flex;
   align-items: center;
   padding: 10px 12px;
@@ -5978,11 +5978,6 @@ body {
   text-align: center;
 }
 
-.ms-header-note {
-  width: 140px;
-  text-align: center;
-}
-
 .ms-header-info-full .ms-header-name {
   min-width: 280px;
 }
@@ -5994,11 +5989,6 @@ body {
 
 .ms-header-info-full .ms-header-progress {
   width: 130px;
-}
-
-.ms-header-info-full .ms-header-note {
-  flex: 1;
-  min-width: 140px;
 }
 
 .ms-header-act {
@@ -6029,32 +6019,35 @@ body {
   min-height: 100px;
 }
 
-.ms-row {
-  display: flex;
+.ms-row-wrapper {
   border-bottom: 1px solid rgba(71, 85, 105, 0.12);
   transition: background-color 0.12s;
 }
 
-.ms-row:hover {
+.ms-row-wrapper:hover {
   background-color: rgba(59, 130, 246, 0.05);
 }
 
-.ms-row-group {
+.ms-row-wrapper.ms-row-group {
   background: rgba(30, 41, 59, 0.05);
 }
 
-.ms-row-group.ms-level-0 {
+.ms-row-wrapper.ms-row-group.ms-level-0 {
   background: rgba(30, 41, 59, 0.08);
   border-bottom: 1px solid rgba(71, 85, 105, 0.25);
 }
 
-.ms-row-group.ms-level-1 {
+.ms-row-wrapper.ms-row-group.ms-level-1 {
   background: rgba(30, 41, 59, 0.04);
 }
 
+.ms-row {
+  display: flex;
+}
+
 .ms-row-info {
-  min-width: 780px;
-  width: 780px;
+  min-width: 680px;
+  width: 680px;
   display: flex;
   align-items: center;
   padding: 7px 12px;
@@ -6171,55 +6164,41 @@ body {
   border-radius: 3px;
 }
 
-.ms-row-note {
-  width: 140px;
-  display: flex;
-  align-items: flex-start;
-  padding-top: 4px;
-  font-size: 11px;
+/* Full-width Note row below each task */
+.ms-row-note-full {
+  border-top: 1px dashed rgba(71, 85, 105, 0.15);
+  padding: 4px 16px;
+  font-size: 12px;
   color: var(--text-secondary);
-  overflow: hidden;
+  min-height: 28px;
 }
 
-.ms-row-info-full .ms-row-note {
-  flex: 1;
-  min-width: 140px;
-}
-
-.ms-row-note .editable-cell {
+.ms-row-note-full .editable-cell {
   width: 100%;
   max-width: 100%;
 }
 
-.ms-row-note .editable-cell span {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  line-height: 1.4;
-  opacity: 0.7;
-  font-style: italic;
-  word-break: break-all;
-}
-
-.ms-row-note .editable-cell .editable-cell-multiline span {
+.ms-row-note-full .editable-cell span {
   white-space: pre-wrap;
+  line-height: 1.5;
+  opacity: 0.65;
+  font-style: italic;
+  word-break: break-word;
+  display: block;
 }
 
-.ms-row-note .editable-textarea-input {
+.ms-row-note-full .editable-textarea-input {
   width: 100%;
-  font-size: 11px;
-  min-height: 36px;
+  font-size: 12px;
+  min-height: 48px;
   resize: vertical;
-  line-height: 1.4;
-  padding: 3px 6px;
+  line-height: 1.5;
+  padding: 4px 8px;
 }
 
-.ms-row-note .editable-text-input {
+.ms-row-note-full .editable-text-input {
   width: 100%;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ms-row-actions {
@@ -6341,6 +6320,22 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   line-height: 1;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+/* Computed date display (parent auto-calculated) */
+.ms-computed-date {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ms-duration-computed {
+  font-size: 10px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: var(--text-muted);
+  margin-left: 4px;
+  white-space: nowrap;
 }
 
 /* Duration days input */
