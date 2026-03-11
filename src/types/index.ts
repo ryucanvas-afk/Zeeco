@@ -175,6 +175,7 @@ export interface MasterScheduleTask {
   color: string;
   expanded: boolean;
   sortOrder: number;
+  note: string;
 }
 
 export interface ScheduleSnapshot {

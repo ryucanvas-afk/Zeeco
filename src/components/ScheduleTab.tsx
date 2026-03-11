@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Project, MasterScheduleTask } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
@@ -26,7 +26,7 @@ function computeDuration(start: string, end: string): number {
 }
 
 export default function ScheduleTab({ project }: ScheduleTabProps) {
-  const { addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
+  const { initializeDefaultSchedule, addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'group' | 'task'>('group');
   const [formParentId, setFormParentId] = useState('');
@@ -35,9 +35,17 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [snapshotName, setSnapshotName] = useState('');
+  const [showGantt, setShowGantt] = useState(false);
   const ganttRef = useRef<HTMLDivElement>(null);
 
   const tasks = project.masterSchedule || [];
+
+  // Initialize default schedule groups if empty
+  useEffect(() => {
+    if (tasks.length === 0) {
+      initializeDefaultSchedule(project.id);
+    }
+  }, [project.id, tasks.length, initializeDefaultSchedule]);
 
   // Build tree structure
   const rootTasks = tasks.filter(t => !t.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -52,11 +60,11 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
   // Initialize expanded groups
   useState(() => {
     const groups = new Set<string>();
-    rootTasks.forEach(t => groups.add(t.id));
+    tasks.forEach(t => { if (!t.parentId || hasChildren(t.id)) groups.add(t.id); });
     setExpandedGroups(groups);
   });
 
-  // Timeline calculation
+  // Timeline calculation (for Gantt view)
   const allTasks = tasks.filter(t => t.startDate && t.endDate);
   const timelineStart = allTasks.length > 0
     ? allTasks.reduce((min, t) => {
@@ -98,7 +106,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
 
   const expandAll = () => {
     const all = new Set<string>();
-    tasks.forEach(t => { if (hasChildren(t.id)) all.add(t.id); });
+    tasks.forEach(t => { if (hasChildren(t.id) || !t.parentId) all.add(t.id); });
     setExpandedGroups(all);
   };
 
@@ -140,6 +148,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
       color: formData.color,
       expanded: true,
       sortOrder: maxOrder + 1,
+      note: '',
     });
     setShowForm(false);
     if (formParentId) {
@@ -163,16 +172,26 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     deleteMasterTask(project.id, taskId);
   };
 
-  // Compute group progress from children
-  const getGroupProgress = (taskId: string): number => {
+  // Compute group progress from all descendants recursively
+  const getGroupProgress = useCallback((taskId: string): number => {
     const children = getChildren(taskId);
     if (children.length === 0) return 0;
-    const total = children.reduce((sum, c) => sum + (c.progress || 0), 0);
-    return Math.round(total / children.length);
-  };
+    let totalProgress = 0;
+    let count = 0;
+    children.forEach(c => {
+      if (hasChildren(c.id)) {
+        const childProgress = getGroupProgress(c.id);
+        totalProgress += childProgress;
+      } else {
+        totalProgress += (c.progress || 0);
+      }
+      count++;
+    });
+    return count > 0 ? Math.round(totalProgress / count) : 0;
+  }, [getChildren, hasChildren]);
 
-  // Compute group date range from children
-  const getGroupDateRange = (taskId: string): { start: string; end: string } => {
+  // Compute group date range from all descendants recursively
+  const getGroupDateRange = useCallback((taskId: string): { start: string; end: string } => {
     const children = getChildren(taskId);
     if (children.length === 0) {
       const t = tasks.find(x => x.id === taskId);
@@ -180,12 +199,17 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     }
     let minDate = '';
     let maxDate = '';
-    children.forEach(c => {
-      if (c.startDate && (!minDate || c.startDate < minDate)) minDate = c.startDate;
-      if (c.endDate && (!maxDate || c.endDate > maxDate)) maxDate = c.endDate;
-    });
+    const collectDates = (parentId: string) => {
+      const kids = getChildren(parentId);
+      kids.forEach(c => {
+        if (c.startDate && (!minDate || c.startDate < minDate)) minDate = c.startDate;
+        if (c.endDate && (!maxDate || c.endDate > maxDate)) maxDate = c.endDate;
+        if (hasChildren(c.id)) collectDates(c.id);
+      });
+    };
+    collectDates(taskId);
     return { start: minDate, end: maxDate };
-  };
+  }, [tasks, getChildren, hasChildren]);
 
   const renderGanttBar = (task: MasterScheduleTask, isGroup: boolean) => {
     let start: string, end: string;
@@ -209,7 +233,6 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
 
     return (
       <div className="ms-gantt-bar-area">
-        {/* Month grid lines */}
         {months.map((m, i) => {
           const mStart = differenceInDays(m, paddedStart);
           const mLeft = (mStart / totalDays) * 100;
@@ -221,7 +244,7 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
           style={{
             left: `${Math.max(left, 0)}%`,
             width: `${width}%`,
-            backgroundColor: isGroup ? barColor : barColor,
+            backgroundColor: barColor,
           }}
           title={`${task.name}: ${start} ~ ${end} (${progress}%)`}
         >
@@ -236,23 +259,28 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
     );
   };
 
-  const renderTaskRow = (task: MasterScheduleTask, level: number, isGroup: boolean) => {
+  // Get the depth level of a task (to determine if it's a group-like node)
+  const isGroupNode = useCallback((task: MasterScheduleTask): boolean => {
+    return hasChildren(task.id) || !task.parentId;
+  }, [hasChildren]);
+
+  const renderTaskRow = (task: MasterScheduleTask, level: number) => {
     const isExpanded = expandedGroups.has(task.id);
     const children = getChildren(task.id);
+    const isGroup = isGroupNode(task);
     const groupProgress = isGroup ? getGroupProgress(task.id) : task.progress;
 
     return (
       <div key={task.id}>
-        <div className={`ms-row ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 3)}`}>
-          {/* Left: Task info */}
-          <div className="ms-row-info">
-            <div className="ms-row-name" style={{ paddingLeft: level * 20 }}>
-              {isGroup && (
+        <div className={`ms-row ${isGroup ? 'ms-row-group' : 'ms-row-task'} ms-level-${Math.min(level, 4)}`}>
+          <div className={`ms-row-info ${showGantt ? '' : 'ms-row-info-full'}`}>
+            <div className="ms-row-name" style={{ paddingLeft: level * 24 }}>
+              {(isGroup || children.length > 0) && (
                 <button className="ms-expand-btn" onClick={() => toggleExpand(task.id)}>
                   {isExpanded ? '▼' : '▶'}
                 </button>
               )}
-              {!isGroup && <span className="ms-task-dot" style={{ backgroundColor: task.color || '#6366f1' }} />}
+              {!isGroup && children.length === 0 && <span className="ms-task-dot" style={{ backgroundColor: task.color || '#6366f1' }} />}
               <EditableCell
                 value={task.name}
                 onSave={v => handleUpdate(task.id, 'name', v)}
@@ -270,6 +298,25 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 type="date"
                 onSave={v => handleUpdate(task.id, 'endDate', v)}
               />
+              <input
+                className="ms-duration-input"
+                type="number"
+                min="0"
+                placeholder="일"
+                title="시작일 기준 기간(일) 입력시 종료일 자동 설정"
+                value={task.duration || ''}
+                onChange={e => {
+                  const days = Number(e.target.value);
+                  if (days >= 0 && task.startDate) {
+                    const endDate = format(addDays(parseISO(task.startDate), days), 'yyyy-MM-dd');
+                    updateMasterTask(project.id, task.id, {
+                      duration: days,
+                      endDate,
+                    });
+                  }
+                }}
+              />
+              <span className="ms-duration-label">일</span>
             </div>
             <div className="ms-row-progress">
               {isGroup ? (
@@ -291,36 +338,45 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
                 />
               </div>
             </div>
+            <div className="ms-row-note">
+              <EditableCell
+                value={task.note || ''}
+                onSave={v => handleUpdate(task.id, 'note', v)}
+              />
+            </div>
             <div className="ms-row-actions">
-              {isGroup && (
-                <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
-              )}
+              <button className="btn-icon ms-btn-add" onClick={() => handleAddTask(task.id)} title="하위 작업 추가">+</button>
               <button className="btn-icon btn-danger ms-btn-del" onClick={() => handleDelete(task.id)} title="삭제">✕</button>
             </div>
           </div>
-          {/* Right: Gantt bar */}
-          <div className="ms-row-gantt">
-            {renderGanttBar(task, isGroup)}
-          </div>
+          {/* Right: Gantt bar (only shown when toggled) */}
+          {showGantt && (
+            <div className="ms-row-gantt">
+              {renderGanttBar(task, isGroup)}
+            </div>
+          )}
         </div>
-        {/* Children */}
-        {isGroup && isExpanded && children.map(child => {
-          const childIsGroup = hasChildren(child.id);
-          return renderTaskRow(child, level + 1, childIsGroup);
-        })}
+        {/* Children (recursive) */}
+        {isExpanded && children.map(child => renderTaskRow(child, level + 1))}
       </div>
     );
   };
 
   return (
-    <div className="schedule-tab">
+    <div className="schedule-tab schedule-tab-fullscreen">
       {/* Master Schedule Header */}
-      <div className="section-card">
+      <div className="section-card ms-section-card">
         <div className="section-header">
-          <h3 className="section-title">Master Schedule (Gantt Chart)</h3>
+          <h3 className="section-title">Master Schedule</h3>
           <div className="section-actions" style={{ gap: 6, display: 'flex', flexWrap: 'wrap' }}>
             <button className="btn btn-secondary btn-sm" onClick={expandAll}>모두 펼치기</button>
             <button className="btn btn-secondary btn-sm" onClick={collapseAll}>모두 접기</button>
+            <button
+              className={`btn btn-sm ${showGantt ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowGantt(!showGantt)}
+            >
+              {showGantt ? '도표 숨기기' : '도표 보기'}
+            </button>
             <button className="btn btn-primary btn-sm" onClick={handleAddGroup}>+ 그룹 추가</button>
             <button className="btn btn-secondary btn-sm" onClick={() => setShowSnapshots(!showSnapshots)}>
               CASE 관리 {(project.scheduleSnapshots || []).length > 0 ? `(${(project.scheduleSnapshots || []).length})` : ''}
@@ -433,46 +489,43 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
         )}
 
         {tasks.length > 0 && (
-          <p className="edit-hint">셀을 클릭하면 직접 수정할 수 있습니다. ▶/▼로 그룹을 펼치거나 접을 수 있습니다.</p>
+          <p className="edit-hint">셀을 클릭하면 직접 수정할 수 있습니다. 모든 항목에 하위 작업을 추가할 수 있습니다.</p>
         )}
 
-        {/* Gantt Chart */}
+        {/* Schedule Table */}
         <div className="ms-gantt-container" ref={ganttRef}>
-          {/* Timeline header */}
+          {/* Header */}
           <div className="ms-gantt-header">
-            <div className="ms-header-info">
+            <div className={`ms-header-info ${showGantt ? '' : 'ms-header-info-full'}`}>
               <span className="ms-header-name">작업</span>
               <span className="ms-header-dates">기간</span>
               <span className="ms-header-progress">진행률</span>
+              <span className="ms-header-note">Note</span>
               <span className="ms-header-act"></span>
             </div>
-            <div className="ms-header-timeline">
-              {months.map((m, i) => {
-                const mStart = differenceInDays(m, paddedStart);
-                const mEnd = differenceInDays(endOfMonth(m), paddedStart);
-                const left = (mStart / totalDays) * 100;
-                const width = ((mEnd - mStart + 1) / totalDays) * 100;
-                return (
-                  <div key={i} className="ms-month-header" style={{ left: `${left}%`, width: `${width}%` }}>
-                    {format(m, 'yyyy-MM')}
-                  </div>
-                );
-              })}
-            </div>
+            {showGantt && (
+              <div className="ms-header-timeline">
+                {months.map((m, i) => {
+                  const mStart = differenceInDays(m, paddedStart);
+                  const mEnd = differenceInDays(endOfMonth(m), paddedStart);
+                  const left = (mStart / totalDays) * 100;
+                  const width = ((mEnd - mStart + 1) / totalDays) * 100;
+                  return (
+                    <div key={i} className="ms-month-header" style={{ left: `${left}%`, width: `${width}%` }}>
+                      {format(m, 'yyyy-MM')}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Task rows */}
           <div className="ms-gantt-body">
-            {rootTasks.map(task => {
-              const isGroup = hasChildren(task.id);
-              return renderTaskRow(task, 0, isGroup || !task.parentId);
-            })}
+            {rootTasks.map(task => renderTaskRow(task, 0))}
             {tasks.length === 0 && (
               <div className="ms-empty">
-                <p>등록된 일정이 없습니다. "그룹 추가" 버튼으로 일정을 구성하세요.</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                  GanttProject(.gan) 파일처럼 그룹 &gt; 하위 작업 형태로 구성됩니다.
-                </p>
+                <p>일정을 초기화하고 있습니다...</p>
               </div>
             )}
           </div>
