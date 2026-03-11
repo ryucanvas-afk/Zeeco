@@ -6029,16 +6029,12 @@ body {
 }
 
 .ms-row-wrapper.ms-row-group {
-  background: rgba(30, 41, 59, 0.05);
+  background: transparent;
 }
 
 .ms-row-wrapper.ms-row-group.ms-level-0 {
-  background: rgba(30, 41, 59, 0.08);
+  background: #e8f5e9;
   border-bottom: 1px solid rgba(71, 85, 105, 0.25);
-}
-
-.ms-row-wrapper.ms-row-group.ms-level-1 {
-  background: rgba(30, 41, 59, 0.04);
 }
 
 .ms-row {
@@ -6608,6 +6604,53 @@ body {
 }
 
 /* Schedule Snapshot / CASE Management */
+/* Import from other project panel */
+.ms-import-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.ms-import-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.ms-import-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ms-import-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 14px !important;
+}
+
+.ms-import-item-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ms-import-item-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.ms-import-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .ms-snapshot-panel {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);

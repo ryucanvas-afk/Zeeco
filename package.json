@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "build:portable": "tsc -b && vite build --base=./",
     "serve": "npm run build && node server.js",
     "start": "node server.js"
   },

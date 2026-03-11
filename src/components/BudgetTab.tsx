@@ -43,8 +43,9 @@ function newGroupId() {
 }
 
 export default function BudgetTab({ project }: BudgetTabProps) {
-  const { updateProject, addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems, saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot } = useProjects();
+  const { projects, updateProject, addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems, saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot, resetBudgetItems, copyBudgetItemsFrom } = useProjects();
   const [collapsedParts, setCollapsedParts] = useState<Record<string, boolean>>({});
+  const [showBudgetImport, setShowBudgetImport] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSnapshotPanel, setShowSnapshotPanel] = useState(false);
@@ -715,15 +716,50 @@ export default function BudgetTab({ project }: BudgetTabProps) {
         </div>
       </div>
 
-      {/* Snapshot Panel */}
+      {/* Budget Actions Bar */}
       <div className="budget-snapshot-bar">
         <button className="btn btn-sm btn-secondary" onClick={() => setShowSnapshotPanel(!showSnapshotPanel)}>
           {showSnapshotPanel ? '접기' : `CASE 관리 (${(project.budgetSnapshots || []).length})`}
+        </button>
+        <button className="btn btn-sm btn-secondary" onClick={() => setShowBudgetImport(!showBudgetImport)}>
+          다른 프로젝트에서 불러오기
+        </button>
+        <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }} onClick={() => {
+          if ((project.budgetItems || []).length > 0 && confirm('모든 예산 항목을 초기화하시겠습니까?')) resetBudgetItems(project.id);
+        }}>
+          초기화
         </button>
         {!showSnapshotPanel && compareSnapshotId && (
           <button className="btn btn-sm btn-secondary" onClick={() => setCompareSnapshotId(null)} style={{ marginLeft: 8 }}>비교 해제</button>
         )}
       </div>
+
+      {showBudgetImport && (
+        <div className="ms-import-panel">
+          <p className="ms-import-label">다른 프로젝트의 예산 항목을 불러옵니다:</p>
+          <div className="ms-import-list">
+            {projects.filter(p => p.id !== project.id && (p.budgetItems || []).length > 0).map(p => (
+              <button
+                key={p.id}
+                className="btn btn-secondary btn-sm ms-import-item"
+                onClick={() => {
+                  if (confirm(`"${p.name}"의 예산 항목(${(p.budgetItems || []).length}개)을 불러오시겠습니까? 현재 항목이 대체됩니다.`)) {
+                    copyBudgetItemsFrom(project.id, p.id);
+                    setShowBudgetImport(false);
+                  }
+                }}
+              >
+                <span className="ms-import-item-color" style={{ backgroundColor: p.color }} />
+                {p.name}
+                <span className="ms-import-item-count">{(p.budgetItems || []).length}개 항목</span>
+              </button>
+            ))}
+            {projects.filter(p => p.id !== project.id && (p.budgetItems || []).length > 0).length === 0 && (
+              <p className="ms-import-empty">불러올 수 있는 프로젝트가 없습니다.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSnapshotPanel && (
         <div className="budget-snapshot-panel">

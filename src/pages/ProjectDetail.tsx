@@ -65,7 +65,8 @@ function formatNumber(n: number): string {
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, updateProject, addItem, updateItem, deleteItem, addSubItem, updateSubItem, deleteSubItem, reorderItems } = useProjects();
+  const { projects, updateProject, addItem, updateItem, deleteItem, addSubItem, updateSubItem, deleteSubItem, reorderItems, resetItems, copyItemsFrom } = useProjects();
+  const [showItemImport, setShowItemImport] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showAddItem, setShowAddItem] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -248,8 +249,41 @@ export default function ProjectDetail() {
             <div className="section-card">
               <div className="section-header">
                 <h3 className="section-title">품목 목록</h3>
-                <button className="btn btn-primary" onClick={() => setShowAddItem(true)}>+ 품목 추가</button>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => setShowAddItem(true)}>+ 품목 추가</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setShowItemImport(!showItemImport)}>다른 프로젝트에서 불러오기</button>
+                  <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => {
+                    if (project.items.length > 0 && confirm('모든 품목을 초기화하시겠습니까?')) resetItems(project.id);
+                  }}>초기화</button>
+                </div>
               </div>
+
+              {showItemImport && (
+                <div className="ms-import-panel">
+                  <p className="ms-import-label">다른 프로젝트의 품목/구매 데이터를 불러옵니다:</p>
+                  <div className="ms-import-list">
+                    {projects.filter(p => p.id !== project.id && p.items.length > 0).map(p => (
+                      <button
+                        key={p.id}
+                        className="btn btn-secondary btn-sm ms-import-item"
+                        onClick={() => {
+                          if (confirm(`"${p.name}"의 품목(${p.items.length}개)을 불러오시겠습니까? 현재 품목이 대체됩니다.`)) {
+                            copyItemsFrom(project.id, p.id);
+                            setShowItemImport(false);
+                          }
+                        }}
+                      >
+                        <span className="ms-import-item-color" style={{ backgroundColor: p.color }} />
+                        {p.name}
+                        <span className="ms-import-item-count">{p.items.length}개 품목</span>
+                      </button>
+                    ))}
+                    {projects.filter(p => p.id !== project.id && p.items.length > 0).length === 0 && (
+                      <p className="ms-import-empty">불러올 수 있는 프로젝트가 없습니다.</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {showAddItem && (
                 <form className="inline-form" onSubmit={handleAddItem}>

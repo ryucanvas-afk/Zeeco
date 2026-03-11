@@ -26,7 +26,8 @@ function computeDuration(start: string, end: string): number {
 }
 
 export default function ScheduleTab({ project }: ScheduleTabProps) {
-  const { initializeDefaultSchedule, addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
+  const { projects, initializeDefaultSchedule, resetMasterSchedule, copyMasterScheduleFrom, addMasterTask, updateMasterTask, deleteMasterTask, saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot } = useProjects();
+  const [showImportFrom, setShowImportFrom] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'group' | 'task'>('group');
   const [formParentId, setFormParentId] = useState('');
@@ -636,8 +637,53 @@ export default function ScheduleTab({ project }: ScheduleTabProps) {
               CASE 관리 {(project.scheduleSnapshots || []).length > 0 ? `(${(project.scheduleSnapshots || []).length})` : ''}
             </button>
             <button className="btn btn-accent btn-sm" onClick={() => setShowPdfPreview(true)}>PDF 추출</button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowImportFrom(!showImportFrom)}
+            >
+              다른 프로젝트에서 불러오기
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ color: '#ef4444' }}
+              onClick={() => {
+                if (confirm('일정을 초기화하시겠습니까? 모든 작업이 삭제되고 기본 그룹으로 다시 생성됩니다.')) {
+                  resetMasterSchedule(project.id);
+                }
+              }}
+            >
+              초기화
+            </button>
           </div>
         </div>
+
+        {/* Import from other project */}
+        {showImportFrom && (
+          <div className="ms-import-panel">
+            <p className="ms-import-label">다른 프로젝트의 일정 구조를 불러옵니다 (진행률은 0%로 초기화됩니다):</p>
+            <div className="ms-import-list">
+              {projects.filter(p => p.id !== project.id && (p.masterSchedule || []).length > 0).map(p => (
+                <button
+                  key={p.id}
+                  className="btn btn-secondary btn-sm ms-import-item"
+                  onClick={() => {
+                    if (confirm(`"${p.name}"의 일정을 불러오시겠습니까? 현재 일정이 대체됩니다.`)) {
+                      copyMasterScheduleFrom(project.id, p.id);
+                      setShowImportFrom(false);
+                    }
+                  }}
+                >
+                  <span className="ms-import-item-color" style={{ backgroundColor: p.color }} />
+                  {p.name}
+                  <span className="ms-import-item-count">{(p.masterSchedule || []).length}개 작업</span>
+                </button>
+              ))}
+              {projects.filter(p => p.id !== project.id && (p.masterSchedule || []).length > 0).length === 0 && (
+                <p className="ms-import-empty">불러올 수 있는 프로젝트가 없습니다.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {showForm && (
           <form className="inline-form" onSubmit={handleSubmit}>

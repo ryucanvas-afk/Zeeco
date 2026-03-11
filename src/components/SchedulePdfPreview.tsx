@@ -18,6 +18,7 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
+  const [fitOnePage, setFitOnePage] = useState(true);
 
   const tasks = project.masterSchedule || [];
   const rootTasks = tasks.filter(t => !t.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -120,41 +121,55 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
 
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
+      const margin = 5;
+      const usableWidth = pdfWidth - margin * 2;
+      const usableHeight = pdfHeight - margin * 2;
 
-      const ratio = pdfWidth / imgWidth;
-      const scaledHeight = imgHeight * ratio;
-
-      if (scaledHeight <= pdfHeight) {
+      if (fitOnePage) {
+        // Scale to fit both width and height on one page
+        const ratioW = usableWidth / imgWidth;
+        const ratioH = usableHeight / imgHeight;
+        const ratio = Math.min(ratioW, ratioH);
         const w = imgWidth * ratio;
-        const h = scaledHeight;
+        const h = imgHeight * ratio;
         const x = (pdfWidth - w) / 2;
-        const y = 5;
+        const y = margin;
         pdf.addImage(imgData, 'PNG', x, y, w, h);
       } else {
-        const pageContentHeight = pdfHeight - 10;
-        const sourcePageHeight = pageContentHeight / ratio;
-        let yOffset = 0;
-        let pageNum = 0;
+        const ratio = usableWidth / imgWidth;
+        const scaledHeight = imgHeight * ratio;
 
-        while (yOffset < imgHeight) {
-          if (pageNum > 0) pdf.addPage();
-          const sliceHeight = Math.min(sourcePageHeight, imgHeight - yOffset);
+        if (scaledHeight <= usableHeight) {
+          const w = imgWidth * ratio;
+          const h = scaledHeight;
+          const x = (pdfWidth - w) / 2;
+          pdf.addImage(imgData, 'PNG', x, margin, w, h);
+        } else {
+          const pageContentHeight = usableHeight;
+          const sourcePageHeight = pageContentHeight / ratio;
+          let yOffset = 0;
+          let pageNum = 0;
 
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = imgWidth;
-          pageCanvas.height = sliceHeight;
-          const ctx = pageCanvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(canvas, 0, yOffset, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
-            const pageData = pageCanvas.toDataURL('image/png');
-            const w = imgWidth * ratio;
-            const h = sliceHeight * ratio;
-            const x = (pdfWidth - w) / 2;
-            pdf.addImage(pageData, 'PNG', x, 5, w, h);
+          while (yOffset < imgHeight) {
+            if (pageNum > 0) pdf.addPage();
+            const sliceHeight = Math.min(sourcePageHeight, imgHeight - yOffset);
+
+            const pageCanvas = document.createElement('canvas');
+            pageCanvas.width = imgWidth;
+            pageCanvas.height = sliceHeight;
+            const ctx = pageCanvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(canvas, 0, yOffset, imgWidth, sliceHeight, 0, 0, imgWidth, sliceHeight);
+              const pageData = pageCanvas.toDataURL('image/png');
+              const w = imgWidth * ratio;
+              const h = sliceHeight * ratio;
+              const x = (pdfWidth - w) / 2;
+              pdf.addImage(pageData, 'PNG', x, margin, w, h);
+            }
+
+            yOffset += sliceHeight;
+            pageNum++;
           }
-
-          yOffset += sliceHeight;
-          pageNum++;
         }
       }
 
@@ -186,14 +201,14 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
 
     return (
       <>
-        <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 10 : 16, top: isGroup ? 9 : 6, borderRadius: isGroup ? 2 : 4, backgroundColor: task.color || '#6366f1', overflow: 'hidden', boxShadow: isGroup ? 'none' : '0 1px 2px rgba(0,0,0,0.1)' }}>
+        <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, height: isGroup ? 8 : 12, top: isGroup ? 7 : 5, borderRadius: isGroup ? 2 : 3, backgroundColor: task.color || '#6366f1', overflow: 'hidden', boxShadow: isGroup ? 'none' : '0 1px 2px rgba(0,0,0,0.1)' }}>
           {!isGroup && progress > 0 && (
             <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'rgba(255,255,255,0.35)' }} />
           )}
         </div>
         {/* Date labels on bar */}
         {width > 5 && !isGroup && (
-          <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, top: 23, display: 'flex', justifyContent: 'space-between', padding: '0 2px', fontSize: 7, color: '#94a3b8', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+          <div style={{ position: 'absolute', left: `${Math.max(left, 0)}%`, width: `${width}%`, top: 18, display: 'flex', justifyContent: 'space-between', padding: '0 1px', fontSize: 6, color: '#94a3b8', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
             <span>{format(s, 'MM-dd')}</span>
             <span>{durationDays}d</span>
             <span>{format(e, 'MM-dd')}</span>
@@ -220,6 +235,12 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
                 </button>
               ))}
             </div>
+            <button
+              className={`btn btn-sm ${fitOnePage ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFitOnePage(!fitOnePage)}
+            >
+              {fitOnePage ? '한 페이지 맞춤 ✓' : '한 페이지 맞춤'}
+            </button>
             <button className="btn btn-primary" onClick={handleExportPdf} disabled={exporting}>
               {exporting ? 'PDF 생성 중...' : `PDF 다운로드 (${paperSize.toUpperCase()})`}
             </button>
@@ -230,24 +251,24 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
         <div className="pdf-preview-scroll">
           <div className="ms-pdf-page" ref={printRef}>
             {/* Page header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '3px solid #0f172a', paddingBottom: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #0f172a', paddingBottom: 6, marginBottom: 8 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>{project.name}</div>
-                <div style={{ fontSize: 13, color: '#475569', fontWeight: 500, marginTop: 2 }}>Master Schedule</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>{project.name}</div>
+                <div style={{ fontSize: 10, color: '#475569', fontWeight: 500, marginTop: 1 }}>Master Schedule</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                {project.projectNo && <div style={{ fontSize: 12, color: '#475569', fontWeight: 600, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>Project No. {project.projectNo}</div>}
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Rev. {format(new Date(), 'yyyy-MM-dd')}</div>
+                {project.projectNo && <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>Project No. {project.projectNo}</div>}
+                <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>Rev. {format(new Date(), 'yyyy-MM-dd')}</div>
               </div>
             </div>
 
             {/* Gantt Table Header */}
-            <div style={{ display: 'flex', fontSize: 11, borderBottom: '2px solid #1e293b', fontWeight: 700, color: '#1e293b', letterSpacing: '0.3px' }}>
-              <div style={{ width: 260, minWidth: 260, padding: '6px 8px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
-              <div style={{ width: 72, minWidth: 72, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
-              <div style={{ width: 72, minWidth: 72, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
-              <div style={{ width: 36, minWidth: 36, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
-              <div style={{ width: 100, minWidth: 100, padding: '6px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Note</div>
+            <div style={{ display: 'flex', fontSize: 9, borderBottom: '2px solid #1e293b', fontWeight: 700, color: '#1e293b', letterSpacing: '0.3px' }}>
+              <div style={{ width: 220, minWidth: 220, padding: '4px 6px', borderRight: '1px solid #cbd5e1' }}>Task Name</div>
+              <div style={{ width: 60, minWidth: 60, padding: '4px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Start</div>
+              <div style={{ width: 60, minWidth: 60, padding: '4px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Finish</div>
+              <div style={{ width: 28, minWidth: 28, padding: '4px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>%</div>
+              <div style={{ width: 80, minWidth: 80, padding: '4px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Note</div>
               <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
                 {months.map((m, i) => {
                   const mStart = differenceInDays(m, paddedStart);
@@ -264,11 +285,11 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
             </div>
 
             {/* Rows */}
-            {flatTasks.map(({ task, level, isGroup }, idx) => {
+            {flatTasks.map(({ task, level, isGroup }) => {
               const progress = isGroup ? getGroupProgress(task.id) : task.progress;
               return (
-                <div key={task.id} style={{ display: 'flex', fontSize: 11, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#f1f5f9' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                  <div style={{ width: 260, minWidth: 260, padding: '5px 8px', paddingLeft: 8 + level * 18, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5, fontSize: isGroup && level === 0 ? 12 : 11 }}>
+                <div key={task.id} style={{ display: 'flex', fontSize: 9, borderBottom: '1px solid #e2e8f0', backgroundColor: isGroup && level === 0 ? '#e8f5e9' : '#ffffff' }}>
+                  <div style={{ width: 220, minWidth: 220, padding: '3px 6px', paddingLeft: 6 + level * 14, borderRight: '1px solid #e2e8f0', fontWeight: isGroup ? 700 : 400, color: isGroup ? '#0f172a' : '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4, fontSize: isGroup && level === 0 ? 10 : 9 }}>
                     {isGroup ? (
                       <>
                         <span style={{ color: task.color || '#6366f1', fontSize: 10 }}>■</span>
@@ -281,19 +302,19 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
                     )}
                     {task.name}
                   </div>
-                  <div style={{ width: 72, minWidth: 72, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 60, minWidth: 60, padding: '3px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 8, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.startDate ? format(parseISO(task.startDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 72, minWidth: 72, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 10, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 60, minWidth: 60, padding: '3px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontSize: 8, fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {task.endDate ? format(parseISO(task.endDate), 'yy-MM-dd') : ''}
                   </div>
-                  <div style={{ width: 36, minWidth: 36, padding: '5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: progress === 100 ? '#059669' : '#334155', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
+                  <div style={{ width: 28, minWidth: 28, padding: '3px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, fontSize: 8, color: progress === 100 ? '#059669' : '#334155', fontFamily: "'SF Mono', Consolas, Monaco, monospace" }}>
                     {progress}%
                   </div>
-                  <div style={{ width: 100, minWidth: 100, padding: '5px 4px', borderRight: '1px solid #e2e8f0', color: '#64748b', fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ width: 80, minWidth: 80, padding: '3px 3px', borderRight: '1px solid #e2e8f0', color: '#64748b', fontSize: 7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {task.note || ''}
                   </div>
-                  <div style={{ flex: 1, position: 'relative', minHeight: 32 }}>
+                  <div style={{ flex: 1, position: 'relative', minHeight: 24 }}>
                     {/* Grid lines */}
                     {months.map((m, i) => {
                       const mStart = differenceInDays(m, paddedStart);
@@ -310,7 +331,7 @@ export default function SchedulePdfPreview({ project, expandedGroups, onClose }:
             })}
 
             {/* Legend + Footer */}
-            <div style={{ marginTop: 20, paddingTop: 10, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#64748b' }}>
+            <div style={{ marginTop: 10, paddingTop: 6, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 8, color: '#64748b' }}>
               <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#6366f1', fontSize: 10 }}>■</span> Group Task</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#6366f1', fontSize: 8 }}>●</span> Sub Task</span>

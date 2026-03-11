@@ -209,9 +209,15 @@ interface ProjectContextType {
   updateMasterTask: (projectId: string, taskId: string, updates: Partial<MasterScheduleTask>) => void;
   deleteMasterTask: (projectId: string, taskId: string) => void;
   reorderMasterTasks: (projectId: string, taskIds: string[]) => void;
+  resetMasterSchedule: (projectId: string) => void;
+  copyMasterScheduleFrom: (targetProjectId: string, sourceProjectId: string) => void;
   saveScheduleSnapshot: (projectId: string, name: string) => void;
   loadScheduleSnapshot: (projectId: string, snapshotId: string) => void;
   deleteScheduleSnapshot: (projectId: string, snapshotId: string) => void;
+  resetItems: (projectId: string) => void;
+  copyItemsFrom: (targetProjectId: string, sourceProjectId: string) => void;
+  resetBudgetItems: (projectId: string) => void;
+  copyBudgetItemsFrom: (targetProjectId: string, sourceProjectId: string) => void;
   reorderProjects: (projectIds: string[]) => void;
   reorderItems: (projectId: string, itemIds: string[]) => void;
   importData: (data: Record<string, unknown>[]) => void;
@@ -227,6 +233,45 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     localStorage.setItem(VERSION_KEY, String(SCHEMA_VERSION));
   }, [projects]);
+
+  const resetItems = (projectId: string) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, items: [] } : p));
+  };
+
+  const copyItemsFrom = (targetProjectId: string, sourceProjectId: string) => {
+    setProjects(prev => {
+      const source = prev.find(p => p.id === sourceProjectId);
+      if (!source || !source.items?.length) return prev;
+      const cloned: ProjectItem[] = source.items.map(item => {
+        const newItemId = uuidv4();
+        return {
+          ...item,
+          id: newItemId,
+          projectId: targetProjectId,
+          schedules: item.schedules.map(s => ({ ...s, id: uuidv4(), itemId: newItemId })),
+          purchases: item.purchases.map(pu => ({ ...pu, id: uuidv4(), itemId: newItemId })),
+          subItems: (item.subItems || []).map(si => ({ ...si, id: uuidv4() })),
+        };
+      });
+      return prev.map(p => p.id === targetProjectId ? { ...p, items: cloned } : p);
+    });
+  };
+
+  const resetBudgetItems = (projectId: string) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, budgetItems: [] } : p));
+  };
+
+  const copyBudgetItemsFrom = (targetProjectId: string, sourceProjectId: string) => {
+    setProjects(prev => {
+      const source = prev.find(p => p.id === sourceProjectId);
+      if (!source || !source.budgetItems?.length) return prev;
+      const cloned: BudgetItem[] = source.budgetItems.map(bi => ({
+        ...bi,
+        id: uuidv4(),
+      }));
+      return prev.map(p => p.id === targetProjectId ? { ...p, budgetItems: cloned } : p);
+    });
+  };
 
   const reorderProjects = (projectIds: string[]) => {
     setProjects(prev => {
@@ -586,6 +631,44 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const resetMasterSchedule = (projectId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const today = new Date().toISOString().split('T')[0];
+      const defaultTasks: MasterScheduleTask[] = DEFAULT_SCHEDULE_GROUPS.map((g, idx) => ({
+        id: uuidv4(),
+        parentId: '',
+        name: g.name,
+        startDate: today,
+        endDate: '',
+        duration: 0,
+        progress: 0,
+        color: g.color,
+        expanded: true,
+        sortOrder: idx,
+        note: '',
+      }));
+      return { ...p, masterSchedule: defaultTasks };
+    }));
+  };
+
+  const copyMasterScheduleFrom = (targetProjectId: string, sourceProjectId: string) => {
+    setProjects(prev => {
+      const source = prev.find(p => p.id === sourceProjectId);
+      if (!source || !source.masterSchedule?.length) return prev;
+      // Deep clone and assign new IDs, preserving parentId mapping
+      const idMap = new Map<string, string>();
+      source.masterSchedule.forEach(t => idMap.set(t.id, uuidv4()));
+      const cloned: MasterScheduleTask[] = source.masterSchedule.map(t => ({
+        ...t,
+        id: idMap.get(t.id) || uuidv4(),
+        parentId: t.parentId ? (idMap.get(t.parentId) || '') : '',
+        progress: 0,
+      }));
+      return prev.map(p => p.id === targetProjectId ? { ...p, masterSchedule: cloned } : p);
+    });
+  };
+
   const addMasterTask = (projectId: string, task: Omit<MasterScheduleTask, 'id'>) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -683,8 +766,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       addFactoryPurchase, updateFactoryPurchase, deleteFactoryPurchase,
       addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems,
       saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot,
-      initializeDefaultSchedule, addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
+      initializeDefaultSchedule, resetMasterSchedule, copyMasterScheduleFrom,
+      addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
       saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot,
+      resetItems, copyItemsFrom, resetBudgetItems, copyBudgetItemsFrom,
       reorderProjects, reorderItems,
       importData, resetData,
     }}>
