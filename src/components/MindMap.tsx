@@ -30,15 +30,15 @@ export default function MindMap({ projects }: MindMapProps) {
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
 
   const visibleProjects = projects.filter(p => !p.hidden);
-  const centerX = 500;
-  const centerY = 400;
+  const centerX = 600;
+  const centerY = 450;
 
-  // Dynamic sizing based on project count
+  // Dynamic sizing based on project count - much larger
   const count = visibleProjects.length;
-  const radius = count <= 3 ? 250 : count <= 6 ? 300 : 340;
-  const circleR = 65;
-  const nodeW = 240;
-  const nodeH = 100;
+  const radius = count <= 2 ? 280 : count <= 4 ? 320 : count <= 6 ? 360 : 400;
+  const circleR = 80;
+  const nodeW = 300;
+  const nodeH = 120;
 
   const handleAddProject = () => {
     addProject({
@@ -126,7 +126,7 @@ export default function MindMap({ projects }: MindMapProps) {
       )}
 
       <div className="mindmap-container">
-        <svg viewBox="0 0 1000 800" className="mindmap-svg">
+        <svg viewBox="0 0 1200 900" className="mindmap-svg">
           {/* Project nodes and lines */}
           {visibleProjects.map((project, index) => {
             const angle = (2 * Math.PI * index) / visibleProjects.length - Math.PI / 2;

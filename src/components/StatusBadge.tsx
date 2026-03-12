@@ -18,6 +18,7 @@ const purchaseStatusMap: Record<PurchaseStatus, { label: string; className: stri
   rfq_writing: { label: 'RFQ 작성 중', className: 'badge-planning' },
   rfq_requesting: { label: '견적 요청 중', className: 'badge-planning' },
   price_negotiating: { label: '금액 협의 중', className: 'badge-progress' },
+  po_writing: { label: '발주서 작성 중', className: 'badge-progress' },
   internal_approval: { label: '내부 결재 중', className: 'badge-progress' },
   zoe_approval: { label: 'ZOE 결재 중', className: 'badge-progress' },
   po_reviewing: { label: '발주서 검토 중', className: 'badge-progress' },

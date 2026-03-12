@@ -29,16 +29,6 @@ function isDateInRange(dateStr: string, startStr: string, endStr: string): boole
   return dateStr >= startStr && dateStr <= endStr;
 }
 
-function getRangePosition(dateStr: string, startStr: string, endStr: string): 'single' | 'start' | 'middle' | 'end' | null {
-  if (!startStr) return null;
-  if (!endStr || startStr === endStr) {
-    return dateStr === startStr ? 'single' : null;
-  }
-  if (dateStr === startStr) return 'start';
-  if (dateStr === endStr) return 'end';
-  if (dateStr > startStr && dateStr < endStr) return 'middle';
-  return null;
-}
 
 function formatDateShort(dateStr: string) {
   if (!dateStr) return '';
@@ -374,6 +364,103 @@ export default function InspectionTab({ project }: InspectionTabProps) {
 
   const todayStr = dateToStr(today);
 
+  // Build spanning event data per row
+  interface SpanBar {
+    ins: InspectionEntry;
+    startCol: number;
+    endCol: number;
+    continuesLeft: boolean;
+    continuesRight: boolean;
+    lane: number;
+  }
+
+  const rowSpanData = useMemo(() => {
+    return calendarRows.map((row) => {
+      // Dates in this row
+      const rowDates: (string | null)[] = row.map((day) =>
+        day !== null ? getDateStr(day) : null
+      );
+
+      // Find all multi-day inspections that overlap with this row
+      const multiDay: SpanBar[] = [];
+      const singleDay = new Map<number, InspectionEntry[]>(); // colIdx -> inspections
+
+      for (const ins of filteredInspections) {
+        const insEnd = ins.endDate || ins.date;
+        const isMulti = ins.endDate && ins.endDate !== ins.date;
+
+        // Check if this inspection overlaps any day in this row
+        let startCol = -1;
+        let endCol = -1;
+        for (let c = 0; c < 7; c++) {
+          const d = rowDates[c];
+          if (!d) continue;
+          if (isDateInRange(d, ins.date, insEnd)) {
+            if (startCol === -1) startCol = c;
+            endCol = c;
+          }
+        }
+
+        if (startCol === -1) continue; // not in this row
+
+        if (isMulti) {
+          // Does it continue from before this row?
+          const firstRowDate = rowDates.find(d => d !== null) || '';
+          const continuesLeft = ins.date < firstRowDate;
+          // Does it continue after this row?
+          const lastRowDate = [...rowDates].reverse().find(d => d !== null) || '';
+          const continuesRight = insEnd > lastRowDate;
+
+          multiDay.push({
+            ins,
+            startCol,
+            endCol,
+            continuesLeft,
+            continuesRight,
+            lane: 0, // assigned below
+          });
+        } else {
+          // Single day
+          if (!singleDay.has(startCol)) singleDay.set(startCol, []);
+          singleDay.get(startCol)!.push(ins);
+        }
+      }
+
+      // Assign lanes (greedy: sort by startCol, then by span desc)
+      multiDay.sort((a, b) => a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
+      const laneOccupied: number[][] = []; // laneOccupied[lane] = array of occupied column ranges
+      for (const bar of multiDay) {
+        let placed2 = false;
+        for (let l = 0; l < laneOccupied.length; l++) {
+          let hasConflict = false;
+          for (let ci = 0; ci < laneOccupied[l].length; ci += 2) {
+            const oStart = laneOccupied[l][ci];
+            const oEnd = laneOccupied[l][ci + 1];
+            if (bar.startCol <= oEnd && bar.endCol >= oStart) {
+              hasConflict = true;
+              break;
+            }
+          }
+          if (!hasConflict) {
+            bar.lane = l;
+            laneOccupied[l].push(bar.startCol, bar.endCol);
+            placed2 = true;
+            break;
+          }
+        }
+        if (!placed2) {
+          bar.lane = laneOccupied.length;
+          laneOccupied.push([bar.startCol, bar.endCol]);
+        }
+      }
+
+      return { multiDay, singleDay, laneCount: laneOccupied.length };
+    });
+  }, [calendarRows, filteredInspections, getDateStr]);
+
+  const SPAN_BAR_HEIGHT = 22;
+  const SPAN_BAR_GAP = 2;
+
   // Color index map for fallback
   const insIndexMap = new Map<string, number>();
   inspections.forEach((ins, idx) => { insIndexMap.set(ins.id, idx); });
@@ -469,60 +556,101 @@ export default function InspectionTab({ project }: InspectionTabProps) {
               ))}
             </div>
             <div className="insp-calendar-body">
-              {calendarRows.map((row, rowIdx) => (
-                <div key={rowIdx} className="insp-calendar-row">
-                  {row.map((day, colIdx) => {
-                    if (day === null) return <div key={`empty-${rowIdx}-${colIdx}`} className="insp-calendar-cell insp-calendar-cell-empty" />;
-                    const dayInspections = getInspectionsForDay(day);
-                    const dateStr = getDateStr(day);
-                    const isToday = dateStr === todayStr;
-                    const isSelected = dateStr === selectedDate;
-                    const isSun = colIdx === 0;
-                    const isSat = colIdx === 6;
+              {calendarRows.map((row, rowIdx) => {
+                const { multiDay, singleDay, laneCount } = rowSpanData[rowIdx];
+                const spanReservedHeight = laneCount > 0 ? laneCount * (SPAN_BAR_HEIGHT + SPAN_BAR_GAP) + 2 : 0;
 
-                    return (
-                      <div
-                        key={day}
-                        className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''} ${dragOverDate === dateStr ? 'insp-drag-over' : ''}`}
-                        onClick={() => handleDayClick(day)}
-                        onDragOver={e => handleDragOverCell(e, dateStr)}
-                        onDragLeave={() => setDragOverDate(null)}
-                        onDrop={e => { e.preventDefault(); handleDropOnCell(dateStr); }}
-                      >
-                        <div className="insp-cell-header">
-                          <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
-                          <div className="insp-cell-actions">
-                            {clipboardIns && (
-                              <button className="insp-paste-btn" onClick={e => { e.stopPropagation(); handlePaste(dateStr); }} title="붙여넣기">&#9112;</button>
-                            )}
-                            {dayInspections.length === 0 && (
-                              <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="insp-cell-content">
-                          {dayInspections.map(ins => {
-                            const fallbackIdx = insIndexMap.get(ins.id) || 0;
-                            const colors = getInsColors(ins, fallbackIdx);
-                            const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                            const rangeClass = pos ? `insp-range-${pos}` : '';
+                return (
+                  <div key={rowIdx} className="insp-calendar-row" style={{ position: 'relative' }}>
+                    {/* Spanning bars layer */}
+                    {multiDay.length > 0 && (
+                      <div className="insp-span-layer" style={{ height: spanReservedHeight }}>
+                        {multiDay.map(bar => {
+                          const { ins, startCol, endCol, continuesLeft, continuesRight, lane } = bar;
+                          const fallbackIdx = insIndexMap.get(ins.id) || 0;
+                          const colors = getInsColors(ins, fallbackIdx);
+                          const leftPct = (startCol / 7) * 100;
+                          const widthPct = ((endCol - startCol + 1) / 7) * 100;
+                          const topPx = lane * (SPAN_BAR_HEIGHT + SPAN_BAR_GAP) + 1;
 
-                            return (
-                              <div
-                                key={ins.id}
-                                className={`insp-cell-entry ${rangeClass}`}
-                                style={{
-                                  background: colors.bg,
-                                  borderLeftColor: (pos === 'middle' || pos === 'end') ? 'transparent' : colors.border,
-                                  borderRightColor: (pos === 'start' || pos === 'middle') ? 'transparent' : undefined,
-                                }}
-                                draggable
-                                onDragStart={e => { e.stopPropagation(); handleDragStart(ins.id); }}
-                                onDragEnd={handleDragEnd}
-                                onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
-                              >
-                                {(pos === 'single' || pos === 'start' || !pos) && (
-                                  <>
+                          return (
+                            <div
+                              key={`${ins.id}-${rowIdx}`}
+                              className="insp-span-bar"
+                              style={{
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
+                                top: topPx,
+                                height: SPAN_BAR_HEIGHT,
+                                background: colors.bg,
+                                borderLeft: continuesLeft ? 'none' : `3px solid ${colors.border}`,
+                                borderRadius: `${continuesLeft ? 0 : 4}px ${continuesRight ? 0 : 4}px ${continuesRight ? 0 : 4}px ${continuesLeft ? 0 : 4}px`,
+                              }}
+                              draggable
+                              onDragStart={e => { e.stopPropagation(); handleDragStart(ins.id); }}
+                              onDragEnd={handleDragEnd}
+                              onClick={e => { e.stopPropagation(); setSelectedDate(ins.date); }}
+                            >
+                              <div className="insp-span-bar-content">
+                                <span className="insp-span-bar-items">{ins.items.join(', ')}</span>
+                                {ins.unit && <span className="insp-span-bar-unit">{ins.unit}</span>}
+                                {ins.categories.length > 0 && ins.categories[0] && (
+                                  <span className="insp-span-bar-cats">{ins.categories.join(', ')}</span>
+                                )}
+                                {ins.location && <span className="insp-span-bar-loc">{ins.location}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Day cells */}
+                    <div className="insp-calendar-row-cells">
+                      {row.map((day, colIdx) => {
+                        if (day === null) return <div key={`empty-${rowIdx}-${colIdx}`} className="insp-calendar-cell insp-calendar-cell-empty" />;
+                        const dateStr = getDateStr(day);
+                        const isToday = dateStr === todayStr;
+                        const isSelected = dateStr === selectedDate;
+                        const isSun = colIdx === 0;
+                        const isSat = colIdx === 6;
+                        const daySingle = singleDay.get(colIdx) || [];
+
+                        return (
+                          <div
+                            key={day}
+                            className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${(daySingle.length > 0 || getInspectionsForDay(day).length > 0) ? 'has-data' : ''} ${dragOverDate === dateStr ? 'insp-drag-over' : ''}`}
+                            onClick={() => handleDayClick(day)}
+                            onDragOver={e => handleDragOverCell(e, dateStr)}
+                            onDragLeave={() => setDragOverDate(null)}
+                            onDrop={e => { e.preventDefault(); handleDropOnCell(dateStr); }}
+                          >
+                            <div className="insp-cell-header">
+                              <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
+                              <div className="insp-cell-actions">
+                                {clipboardIns && (
+                                  <button className="insp-paste-btn" onClick={e => { e.stopPropagation(); handlePaste(dateStr); }} title="붙여넣기">&#9112;</button>
+                                )}
+                                <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
+                              </div>
+                            </div>
+                            <div className="insp-cell-content">
+                              {daySingle.map(ins => {
+                                const fallbackIdx = insIndexMap.get(ins.id) || 0;
+                                const colors = getInsColors(ins, fallbackIdx);
+                                return (
+                                  <div
+                                    key={ins.id}
+                                    className="insp-cell-entry"
+                                    style={{
+                                      background: colors.bg,
+                                      borderLeftColor: colors.border,
+                                    }}
+                                    draggable
+                                    onDragStart={e => { e.stopPropagation(); handleDragStart(ins.id); }}
+                                    onDragEnd={handleDragEnd}
+                                    onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
+                                  >
                                     <div className="insp-cell-items">
                                       {ins.items.map((item, i) => (
                                         <span key={i} className="insp-cell-tag">{item}</span>
@@ -537,20 +665,17 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                                       </div>
                                     )}
                                     {ins.location && <span className="insp-cell-location">{ins.location}</span>}
-                                  </>
-                                )}
-                                {pos === 'end' && (
-                                  <span className="insp-cell-location" style={{ fontSize: '8px', opacity: 0.7 }}>~{ins.endDate?.split('-')[2]}</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
