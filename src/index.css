@@ -2552,72 +2552,36 @@ body {
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* Spanning bars layer */
-.insp-span-layer {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-}
-
-.insp-span-bar {
-  position: absolute;
-  z-index: 2;
+/* Arrow continuation for multi-day inspections */
+.insp-continuation {
   display: flex;
   align-items: center;
-  padding: 0 6px;
-  cursor: pointer;
-  overflow: hidden;
-  font-size: 10px;
-  transition: filter 0.15s;
-  box-sizing: border-box;
-}
-
-.insp-span-bar:hover {
-  filter: brightness(0.95);
-  z-index: 3;
-}
-
-.insp-span-bar-content {
-  display: flex;
   gap: 4px;
-  align-items: center;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 100%;
+  padding: 2px 0;
 }
 
-.insp-span-bar-items {
+.insp-continuation-arrow {
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: inherit;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.insp-continuation-label {
   font-size: 10px;
-  flex-shrink: 0;
-}
-
-.insp-span-bar-unit {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: rgba(255,255,255,0.5);
-  padding: 0 3px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.insp-span-bar-cats {
-  font-size: 9px;
-  color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
+  color: inherit;
+  opacity: 0.7;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.insp-span-bar-loc {
-  font-size: 9px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+.insp-cell-inspector {
+  font-size: 10px;
+  color: #475569;
+  font-weight: 500;
 }
 
 .insp-calendar-cell {
@@ -2776,25 +2740,13 @@ body {
 
 /* Range display styles */
 .insp-range-start {
-  border-radius: 3px 0 0 3px !important;
-  margin-right: -8px;
-  padding-right: 10px;
+  border-radius: 3px;
 }
 
-.insp-range-middle {
-  border-radius: 0 !important;
-  border-left-width: 0 !important;
-  margin-left: -2px;
-  margin-right: -8px;
-  padding-left: 8px;
-  padding-right: 10px;
-}
-
+.insp-range-middle,
 .insp-range-end {
-  border-radius: 0 3px 3px 0 !important;
-  border-left-width: 0 !important;
-  margin-left: -2px;
-  padding-left: 8px;
+  border-radius: 3px;
+  border-left: 3px solid transparent !important;
 }
 
 /* ===== Inspection Cards ===== */
@@ -5804,21 +5756,34 @@ body {
 }
 
 .pdf-range-start {
-  border-radius: 3px 0 0 3px;
-  margin-right: -3px;
+  border-radius: 3px;
 }
 
-.pdf-range-middle {
-  border-radius: 0;
-  margin-left: -3px;
-  margin-right: -3px;
-  border-left-width: 0;
-}
-
+.pdf-range-middle,
 .pdf-range-end {
-  border-radius: 0 3px 3px 0;
-  margin-left: -3px;
-  border-left-width: 0;
+  border-radius: 3px;
+  border-left: 3px solid transparent !important;
+}
+
+.pdf-continuation {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pdf-continuation-arrow {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.pdf-continuation-label {
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pdf-entry-item {
@@ -7239,7 +7204,6 @@ body {
   flex-shrink: 0;
 }
 
-/* (Spanning bars now handled by .insp-span-layer) */
 
 .insp-cell-unit {
   font-size: 8px;

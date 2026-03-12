@@ -200,7 +200,9 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
                                   const fallbackIdx = insIndexMap.get(ins.id) || 0;
                                   const colors = getInsColors(ins, fallbackIdx);
                                   const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                                  const rangeClass = pos && pos !== 'single' ? `pdf-range-${pos}` : '';
+                                  const isStart = pos === 'start' || pos === 'single';
+                                  const isContinuation = pos === 'middle' || pos === 'end';
+                                  const rangeClass = pos ? `pdf-range-${pos}` : '';
 
                                   return (
                                     <div
@@ -208,23 +210,33 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
                                       className={`pdf-cal-entry ${rangeClass}`}
                                       style={{
                                         background: colors.bg,
-                                        borderLeftColor: pos === 'middle' || pos === 'end' ? 'transparent' : colors.border,
+                                        borderLeftColor: isStart ? colors.border : 'transparent',
                                         color: colors.text,
                                       }}
                                     >
-                                      {ins.items.map((item, i) => (
-                                        <div key={i} className="pdf-entry-item">{item}</div>
-                                      ))}
-                                      {ins.categories.length > 0 && ins.categories[0] && (
-                                        <div className="pdf-entry-cats">
-                                          {ins.categories.join(', ')}
+                                      {isStart && (
+                                        <>
+                                          {ins.items.map((item, i) => (
+                                            <div key={i} className="pdf-entry-item">{item}</div>
+                                          ))}
+                                          {ins.categories.length > 0 && ins.categories[0] && (
+                                            <div className="pdf-entry-cats">
+                                              {ins.categories.join(', ')}
+                                            </div>
+                                          )}
+                                          {ins.location && (
+                                            <div className="pdf-entry-location">{ins.location}</div>
+                                          )}
+                                          {ins.inspector && (
+                                            <div className="pdf-entry-inspector">{ins.inspector}</div>
+                                          )}
+                                        </>
+                                      )}
+                                      {isContinuation && (
+                                        <div className="pdf-continuation">
+                                          <span className="pdf-continuation-arrow">→</span>
+                                          <span className="pdf-continuation-label">{ins.items[0] || ''}</span>
                                         </div>
-                                      )}
-                                      {ins.location && (
-                                        <div className="pdf-entry-location">{ins.location}</div>
-                                      )}
-                                      {ins.inspector && (
-                                        <div className="pdf-entry-inspector">{ins.inspector}</div>
                                       )}
                                     </div>
                                   );
