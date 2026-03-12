@@ -2552,30 +2552,41 @@ body {
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* Arrow continuation for multi-day inspections */
-.insp-continuation {
+.insp-other-months {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  margin-bottom: 8px;
+}
+
+.insp-other-months-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.insp-other-months-list {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.insp-continuation-arrow {
-  font-size: 14px;
-  font-weight: 700;
-  color: inherit;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-.insp-continuation-label {
-  font-size: 10px;
+.insp-other-month-btn {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
   font-weight: 500;
-  color: inherit;
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.insp-other-month-btn:hover {
+  opacity: 0.85;
 }
 
 .insp-cell-inspector {
@@ -2736,17 +2747,6 @@ body {
   font-size: 10px;
   color: #475569;
   font-weight: 500;
-}
-
-/* Range display styles */
-.insp-range-start {
-  border-radius: 3px;
-}
-
-.insp-range-middle,
-.insp-range-end {
-  border-radius: 3px;
-  border-left: 3px solid transparent !important;
 }
 
 /* ===== Inspection Cards ===== */
@@ -5753,37 +5753,6 @@ body {
   font-size: 10px;
   line-height: 1.4;
   overflow: hidden;
-}
-
-.pdf-range-start {
-  border-radius: 3px;
-}
-
-.pdf-range-middle,
-.pdf-range-end {
-  border-radius: 3px;
-  border-left: 3px solid transparent !important;
-}
-
-.pdf-continuation {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.pdf-continuation-arrow {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.6;
-}
-
-.pdf-continuation-label {
-  font-size: 9px;
-  font-weight: 500;
-  opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pdf-entry-item {
