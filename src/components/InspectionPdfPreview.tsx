@@ -24,16 +24,6 @@ function isDateInRange(dateStr: string, startStr: string, endStr: string): boole
   return dateStr >= startStr && dateStr <= endStr;
 }
 
-function getRangePosition(dateStr: string, startStr: string, endStr: string): 'single' | 'start' | 'middle' | 'end' | null {
-  if (!startStr) return null;
-  if (!endStr || startStr === endStr) {
-    return dateStr === startStr ? 'single' : null;
-  }
-  if (dateStr === startStr) return 'start';
-  if (dateStr === endStr) return 'end';
-  if (dateStr > startStr && dateStr < endStr) return 'middle';
-  return null;
-}
 
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
@@ -188,7 +178,6 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
                             return <td key={`empty-${rowIdx}-${colIdx}`} className="pdf-cal-td pdf-cal-empty" />;
                           }
                           const dayInspections = getInspectionsForDay(day);
-                          const dateStr = getDateStr(day);
                           const isSun = colIdx === 0;
                           const isSat = colIdx === 6;
 
@@ -199,44 +188,30 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
                                 {dayInspections.map(ins => {
                                   const fallbackIdx = insIndexMap.get(ins.id) || 0;
                                   const colors = getInsColors(ins, fallbackIdx);
-                                  const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                                  const isStart = pos === 'start' || pos === 'single';
-                                  const isContinuation = pos === 'middle' || pos === 'end';
-                                  const rangeClass = pos ? `pdf-range-${pos}` : '';
 
                                   return (
                                     <div
                                       key={ins.id}
-                                      className={`pdf-cal-entry ${rangeClass}`}
+                                      className="pdf-cal-entry"
                                       style={{
                                         background: colors.bg,
-                                        borderLeftColor: isStart ? colors.border : 'transparent',
+                                        borderLeftColor: colors.border,
                                         color: colors.text,
                                       }}
                                     >
-                                      {isStart && (
-                                        <>
-                                          {ins.items.map((item, i) => (
-                                            <div key={i} className="pdf-entry-item">{item}</div>
-                                          ))}
-                                          {ins.categories.length > 0 && ins.categories[0] && (
-                                            <div className="pdf-entry-cats">
-                                              {ins.categories.join(', ')}
-                                            </div>
-                                          )}
-                                          {ins.location && (
-                                            <div className="pdf-entry-location">{ins.location}</div>
-                                          )}
-                                          {ins.inspector && (
-                                            <div className="pdf-entry-inspector">{ins.inspector}</div>
-                                          )}
-                                        </>
-                                      )}
-                                      {isContinuation && (
-                                        <div className="pdf-continuation">
-                                          <span className="pdf-continuation-arrow">→</span>
-                                          <span className="pdf-continuation-label">{ins.items[0] || ''}</span>
+                                      {ins.items.map((item, i) => (
+                                        <div key={i} className="pdf-entry-item">{item}</div>
+                                      ))}
+                                      {ins.categories.length > 0 && ins.categories[0] && (
+                                        <div className="pdf-entry-cats">
+                                          {ins.categories.join(', ')}
                                         </div>
+                                      )}
+                                      {ins.location && (
+                                        <div className="pdf-entry-location">{ins.location}</div>
+                                      )}
+                                      {ins.inspector && (
+                                        <div className="pdf-entry-inspector">{ins.inspector}</div>
                                       )}
                                     </div>
                                   );

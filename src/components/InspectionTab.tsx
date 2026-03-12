@@ -360,17 +360,6 @@ export default function InspectionTab({ project }: InspectionTabProps) {
 
   const todayStr = dateToStr(today);
 
-  // Helper: determine range position for a date within an inspection's range
-  const getRangePosition = (dateStr: string, startStr: string, endStr: string): 'single' | 'start' | 'middle' | 'end' | null => {
-    if (!startStr) return null;
-    if (!endStr || startStr === endStr) {
-      return dateStr === startStr ? 'single' : null;
-    }
-    if (dateStr === startStr) return 'start';
-    if (dateStr === endStr) return 'end';
-    if (dateStr > startStr && dateStr < endStr) return 'middle';
-    return null;
-  };
 
   // Color index map for fallback
   const insIndexMap = new Map<string, number>();
@@ -456,6 +445,46 @@ export default function InspectionTab({ project }: InspectionTabProps) {
         )}
       </div>
 
+      {/* Filtered results from other months */}
+      {hasActiveFilters && (() => {
+        const otherMonthIns = filteredInspections.filter(ins => {
+          const d = new Date(ins.date);
+          return d.getFullYear() !== year || d.getMonth() !== month;
+        });
+        if (otherMonthIns.length === 0) return null;
+
+        // Group by year-month
+        const grouped = new Map<string, InspectionEntry[]>();
+        for (const ins of otherMonthIns) {
+          const d = new Date(ins.date);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(ins);
+        }
+        const sortedKeys = [...grouped.keys()].sort();
+
+        return (
+          <div className="insp-other-months">
+            <div className="insp-other-months-title">다른 월 검사 일정 ({otherMonthIns.length}건)</div>
+            <div className="insp-other-months-list">
+              {sortedKeys.map(key => {
+                const [y, m] = key.split('-').map(Number);
+                const items = grouped.get(key)!;
+                return (
+                  <button
+                    key={key}
+                    className="insp-other-month-btn"
+                    onClick={() => { setYear(y); setMonth(m - 1); }}
+                  >
+                    {y}년 {m}월 ({items.length}건)
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Side-by-side: Calendar + Detail Panel */}
       <div className="insp-layout">
         {/* Left: Calendar */}
@@ -503,48 +532,35 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                             {dayInspections.map(ins => {
                               const fallbackIdx = insIndexMap.get(ins.id) || 0;
                               const colors = getInsColors(ins, fallbackIdx);
-                              const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                              const isStart = pos === 'start' || pos === 'single';
-                              const isContinuation = pos === 'middle' || pos === 'end';
 
                               return (
                                 <div
                                   key={ins.id}
-                                  className={`insp-cell-entry ${pos ? `insp-range-${pos}` : ''}`}
+                                  className="insp-cell-entry"
                                   style={{
                                     background: colors.bg,
-                                    borderLeftColor: isStart ? colors.border : 'transparent',
+                                    borderLeftColor: colors.border,
                                   }}
                                   draggable
                                   onDragStart={e => { e.stopPropagation(); handleDragStart(ins.id); }}
                                   onDragEnd={handleDragEnd}
                                   onClick={e => { e.stopPropagation(); setSelectedDate(ins.date); }}
                                 >
-                                  {isStart && (
-                                    <>
-                                      <div className="insp-cell-items">
-                                        {ins.items.map((item, i) => (
-                                          <span key={i} className="insp-cell-tag">{item}</span>
-                                        ))}
-                                      </div>
-                                      {ins.unit && <span className="insp-cell-unit">{ins.unit}</span>}
-                                      {ins.categories.length > 0 && ins.categories[0] && (
-                                        <div className="insp-cell-cats">
-                                          {ins.categories.map((cat, i) => (
-                                            <span key={i} className="insp-cell-cat-tag">{cat}</span>
-                                          ))}
-                                        </div>
-                                      )}
-                                      {ins.location && <span className="insp-cell-location">{ins.location}</span>}
-                                      {ins.inspector && <span className="insp-cell-inspector">{ins.inspector}</span>}
-                                    </>
-                                  )}
-                                  {isContinuation && (
-                                    <div className="insp-continuation">
-                                      <span className="insp-continuation-arrow">→</span>
-                                      <span className="insp-continuation-label">{ins.items[0] || ''}{ins.items.length > 1 ? '...' : ''}</span>
+                                  <div className="insp-cell-items">
+                                    {ins.items.map((item, i) => (
+                                      <span key={i} className="insp-cell-tag">{item}</span>
+                                    ))}
+                                  </div>
+                                  {ins.unit && <span className="insp-cell-unit">{ins.unit}</span>}
+                                  {ins.categories.length > 0 && ins.categories[0] && (
+                                    <div className="insp-cell-cats">
+                                      {ins.categories.map((cat, i) => (
+                                        <span key={i} className="insp-cell-cat-tag">{cat}</span>
+                                      ))}
                                     </div>
                                   )}
+                                  {ins.location && <span className="insp-cell-location">{ins.location}</span>}
+                                  {ins.inspector && <span className="insp-cell-inspector">{ins.inspector}</span>}
                                 </div>
                               );
                             })}
