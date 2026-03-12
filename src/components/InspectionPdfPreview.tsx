@@ -37,14 +37,27 @@ function getRangePosition(dateStr: string, startStr: string, endStr: string): 's
 
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-const RANGE_COLORS = [
+const COLOR_PRESETS = [
   { bg: 'rgba(59, 130, 246, 0.18)', border: '#3b82f6', text: '#1e40af' },
   { bg: 'rgba(16, 185, 129, 0.18)', border: '#10b981', text: '#065f46' },
   { bg: 'rgba(245, 158, 11, 0.18)', border: '#f59e0b', text: '#92400e' },
   { bg: 'rgba(99, 102, 241, 0.18)', border: '#6366f1', text: '#3730a3' },
   { bg: 'rgba(236, 72, 153, 0.18)', border: '#ec4899', text: '#9d174d' },
   { bg: 'rgba(20, 184, 166, 0.18)', border: '#14b8a6', text: '#115e59' },
+  { bg: 'rgba(239, 68, 68, 0.18)', border: '#ef4444', text: '#991b1b' },
+  { bg: 'rgba(139, 92, 246, 0.18)', border: '#8b5cf6', text: '#5b21b6' },
+  { bg: 'rgba(249, 115, 22, 0.18)', border: '#f97316', text: '#9a3412' },
+  { bg: 'rgba(6, 182, 212, 0.18)', border: '#06b6d4', text: '#155e75' },
 ];
+
+function getInsColors(ins: InspectionEntry, fallbackIdx: number) {
+  if (ins.color) {
+    const preset = COLOR_PRESETS.find(c => c.border === ins.color);
+    if (preset) return preset;
+    return { bg: ins.color + '30', border: ins.color, text: ins.color };
+  }
+  return COLOR_PRESETS[fallbackIdx % COLOR_PRESETS.length];
+}
 
 export default function InspectionPdfPreview({ project, year, month, onClose }: InspectionPdfPreviewProps) {
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -53,6 +66,7 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
   const [previewYear, setPreviewYear] = useState(year);
 
   const inspections = project.inspections || [];
+  const commonNotes = project.inspectionCommonNotes || [];
 
   const daysInMonth = getDaysInMonth(previewYear, previewMonth);
   const firstDay = getFirstDayOfMonth(previewYear, previewMonth);
@@ -68,7 +82,6 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
     return inspections.filter(ins => isDateInRange(dateStr, ins.date, ins.endDate || ins.date));
   };
 
-  // Build calendar grid
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
@@ -80,11 +93,8 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
   const lastRow = calendarRows[calendarRows.length - 1];
   while (lastRow.length < 7) lastRow.push(null);
 
-  // Color map
-  const insColorMap = new Map<string, number>();
-  inspections.forEach((ins, idx) => {
-    insColorMap.set(ins.id, idx % RANGE_COLORS.length);
-  });
+  const insIndexMap = new Map<string, number>();
+  inspections.forEach((ins, idx) => { insIndexMap.set(ins.id, idx); });
 
   const prevMonth = () => {
     if (previewMonth === 0) { setPreviewYear(previewYear - 1); setPreviewMonth(11); }
@@ -105,7 +115,6 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
         backgroundColor: '#ffffff',
       });
       const imgData = canvas.toDataURL('image/png');
-      // A4 landscape
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -129,7 +138,6 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
   return (
     <div className="pdf-preview-overlay" onClick={onClose}>
       <div className="pdf-preview-modal" onClick={e => e.stopPropagation()}>
-        {/* Modal Header */}
         <div className="pdf-preview-header">
           <div className="pdf-preview-nav">
             <button className="btn btn-secondary btn-sm" onClick={prevMonth}>&lt;</button>
@@ -148,10 +156,8 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
           </div>
         </div>
 
-        {/* Printable Calendar Area */}
         <div className="pdf-preview-scroll">
           <div className="pdf-calendar-page" ref={calendarRef}>
-            {/* Page Header */}
             <div className="pdf-page-header">
               <div className="pdf-page-title">{project.name}</div>
               <div className="pdf-page-subtitle">
@@ -162,74 +168,93 @@ export default function InspectionPdfPreview({ project, year, month, onClose }: 
               )}
             </div>
 
-            {/* Calendar */}
-            <table className="pdf-calendar-table">
-              <thead>
-                <tr>
-                  {['일', '월', '화', '수', '목', '금', '토'].map(d => (
-                    <th key={d} className={`pdf-cal-th ${d === '일' ? 'sun' : ''} ${d === '토' ? 'sat' : ''}`}>{d}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {calendarRows.map((row, rowIdx) => (
-                  <tr key={rowIdx}>
-                    {row.map((day, colIdx) => {
-                      if (day === null) {
-                        return <td key={`empty-${rowIdx}-${colIdx}`} className="pdf-cal-td pdf-cal-empty" />;
-                      }
-                      const dayInspections = getInspectionsForDay(day);
-                      const dateStr = getDateStr(day);
-                      const isSun = colIdx === 0;
-                      const isSat = colIdx === 6;
+            {/* Calendar + Notes side by side */}
+            <div className="pdf-insp-body" style={{ display: 'flex', gap: 12 }}>
+              {/* Calendar */}
+              <div style={{ flex: commonNotes.length > 0 ? '1 1 75%' : '1 1 100%' }}>
+                <table className="pdf-calendar-table">
+                  <thead>
+                    <tr>
+                      {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+                        <th key={d} className={`pdf-cal-th ${d === '일' ? 'sun' : ''} ${d === '토' ? 'sat' : ''}`}>{d}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calendarRows.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {row.map((day, colIdx) => {
+                          if (day === null) {
+                            return <td key={`empty-${rowIdx}-${colIdx}`} className="pdf-cal-td pdf-cal-empty" />;
+                          }
+                          const dayInspections = getInspectionsForDay(day);
+                          const dateStr = getDateStr(day);
+                          const isSun = colIdx === 0;
+                          const isSat = colIdx === 6;
 
-                      return (
-                        <td key={day} className="pdf-cal-td">
-                          <div className={`pdf-cal-day ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</div>
-                          <div className="pdf-cal-entries">
-                            {dayInspections.map(ins => {
-                              const colorIdx = insColorMap.get(ins.id) || 0;
-                              const colors = RANGE_COLORS[colorIdx];
-                              const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                              const rangeClass = pos && pos !== 'single' ? `pdf-range-${pos}` : '';
+                          return (
+                            <td key={day} className="pdf-cal-td">
+                              <div className={`pdf-cal-day ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</div>
+                              <div className="pdf-cal-entries">
+                                {dayInspections.map(ins => {
+                                  const fallbackIdx = insIndexMap.get(ins.id) || 0;
+                                  const colors = getInsColors(ins, fallbackIdx);
+                                  const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
+                                  const rangeClass = pos && pos !== 'single' ? `pdf-range-${pos}` : '';
 
-                              return (
-                                <div
-                                  key={ins.id}
-                                  className={`pdf-cal-entry ${rangeClass}`}
-                                  style={{
-                                    background: colors.bg,
-                                    borderLeftColor: pos === 'middle' || pos === 'end' ? 'transparent' : colors.border,
-                                    color: colors.text,
-                                  }}
-                                >
-                                  {ins.items.map((item, i) => (
-                                    <div key={i} className="pdf-entry-item">{item}</div>
-                                  ))}
-                                  {ins.categories.length > 0 && ins.categories[0] && (
-                                    <div className="pdf-entry-cats">
-                                      {ins.categories.join(', ')}
+                                  return (
+                                    <div
+                                      key={ins.id}
+                                      className={`pdf-cal-entry ${rangeClass}`}
+                                      style={{
+                                        background: colors.bg,
+                                        borderLeftColor: pos === 'middle' || pos === 'end' ? 'transparent' : colors.border,
+                                        color: colors.text,
+                                      }}
+                                    >
+                                      {ins.items.map((item, i) => (
+                                        <div key={i} className="pdf-entry-item">{item}</div>
+                                      ))}
+                                      {ins.categories.length > 0 && ins.categories[0] && (
+                                        <div className="pdf-entry-cats">
+                                          {ins.categories.join(', ')}
+                                        </div>
+                                      )}
+                                      {ins.location && (
+                                        <div className="pdf-entry-location">{ins.location}</div>
+                                      )}
+                                      {ins.inspector && (
+                                        <div className="pdf-entry-inspector">{ins.inspector}</div>
+                                      )}
                                     </div>
-                                  )}
-                                  {ins.location && (
-                                    <div className="pdf-entry-location">{ins.location}</div>
-                                  )}
-                                  {ins.inspector && (
-                                    <div className="pdf-entry-inspector">{ins.inspector}</div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Footer */}
+              {/* Common Notes - right side */}
+              {commonNotes.length > 0 && (
+                <div className="pdf-insp-notes" style={{ flex: '0 0 22%', minWidth: 160 }}>
+                  <div className="pdf-insp-notes-title">Notes</div>
+                  <div className="pdf-insp-notes-list">
+                    {commonNotes.map((note, idx) => (
+                      <div key={note.id} className="pdf-insp-note-item">
+                        <span className="pdf-insp-note-num">{idx + 1}.</span>
+                        <span className="pdf-insp-note-text">{note.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="pdf-page-footer">
               <span>Generated on {new Date().toLocaleDateString('ko-KR')}</span>
             </div>

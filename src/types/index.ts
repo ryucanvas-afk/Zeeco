@@ -72,6 +72,7 @@ export interface Project {
   budgetItems: BudgetItem[];
   items: ProjectItem[];
   inspections: InspectionEntry[];
+  inspectionCommonNotes: InspectionCommonNote[];
   factoryPurchases: FactoryPurchase[];
   budgetSnapshots: BudgetSnapshot[];
   masterSchedule: MasterScheduleTask[];
@@ -145,10 +146,17 @@ export interface InspectionEntry {
   endDate: string;
   items: string[];
   categories: string[];
+  unit: string;
   location: string;
   inspector: string;
   observer: string;
   notes: string;
+  color: string;
+}
+
+export interface InspectionCommonNote {
+  id: string;
+  text: string;
 }
 
 export interface FactoryPurchase {

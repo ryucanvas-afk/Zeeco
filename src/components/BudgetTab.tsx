@@ -628,90 +628,109 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
   return (
     <div className="budget-tab" onClick={() => setContextMenu(null)}>
-      {/* Contract & GM Summary Cards */}
-      <div className="budget-summary-section">
-        <div className="summary-cards">
-          <div className="summary-card">
-            <div className="summary-label">환율 (USD/KRW)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(exchangeRate)} type="number" onSave={v => updateProject(project.id, { exchangeRate: Number(v) })} />
+      {/* Budget Dashboard */}
+      <div className="budget-dashboard">
+        {/* Row 1: Exchange Rates & Contract */}
+        <div className="budget-dash-section">
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">환율</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">USD/KRW</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(exchangeRate)} type="number" onSave={v => updateProject(project.id, { exchangeRate: Number(v) })} /></div>
+              </div>
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">EUR/KRW</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(eurExchangeRate)} type="number" onSave={v => updateProject(project.id, { eurExchangeRate: Number(v) })} /></div>
+              </div>
             </div>
           </div>
-          <div className="summary-card">
-            <div className="summary-label">환율 (EUR/KRW)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(eurExchangeRate)} type="number" onSave={v => updateProject(project.id, { eurExchangeRate: Number(v) })} />
+          <div className="budget-dash-divider" />
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">Initial Contract</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">KRW</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(initialContract || '')} type="number" onSave={handleInitialContractKRW} /></div>
+                <div className="budget-dash-card-sub">{initialContractUSD > 0 ? fmtUSD(initialContractUSD) : '-'}</div>
+              </div>
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">USD</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(initialContractUSD || '')} type="number" onSave={handleInitialContractUSD} /></div>
+                <div className="budget-dash-card-sub">{initialContract > 0 ? fmtKRW(initialContract) : '-'}</div>
+              </div>
             </div>
           </div>
-          <div className="summary-card">
-            <div className="summary-label">Initial Contract Amount (KRW)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(initialContract || '')} type="number" onSave={handleInitialContractKRW} />
+          <div className="budget-dash-divider" />
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">Updated Contract</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">KRW</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(updatedContract || '')} type="number" onSave={handleUpdatedContractKRW} /></div>
+                <div className="budget-dash-card-sub">{updatedContractUSD > 0 ? fmtUSD(updatedContractUSD) : '-'}</div>
+              </div>
+              <div className="budget-dash-card">
+                <div className="budget-dash-card-label">USD</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(updatedContractUSD || '')} type="number" onSave={handleUpdatedContractUSD} /></div>
+                <div className="budget-dash-card-sub">{updatedContract > 0 ? fmtKRW(updatedContract) : '-'}</div>
+              </div>
             </div>
-            <div className="summary-sub-value">{initialContractUSD > 0 ? fmtUSD(initialContractUSD) : '-'}</div>
-          </div>
-          <div className="summary-card">
-            <div className="summary-label">Initial Contract Amount (USD)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(initialContractUSD || '')} type="number" onSave={handleInitialContractUSD} />
-            </div>
-            <div className="summary-sub-value">{initialContract > 0 ? fmtKRW(initialContract) : '-'}</div>
-          </div>
-          <div className="summary-card">
-            <div className="summary-label">Updated Contract (KRW)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(updatedContract || '')} type="number" onSave={handleUpdatedContractKRW} />
-            </div>
-            <div className="summary-sub-value">{updatedContractUSD > 0 ? fmtUSD(updatedContractUSD) : '-'}</div>
-          </div>
-          <div className="summary-card">
-            <div className="summary-label">Updated Contract (USD)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(updatedContractUSD || '')} type="number" onSave={handleUpdatedContractUSD} />
-            </div>
-            <div className="summary-sub-value">{updatedContract > 0 ? fmtKRW(updatedContract) : '-'}</div>
           </div>
         </div>
 
-        <div className="summary-cards">
-          <div className="summary-card card-ordered">
-            <div className="summary-label">Total Budget</div>
-            <div className="summary-value summary-value-sm">{fmtKRW(totalBudget)}</div>
-          </div>
-          <div className="summary-card card-shipped">
-            <div className="summary-label">수정 예산 합계</div>
-            <div className="summary-value summary-value-sm">{fmtKRW(totalRevised)}</div>
-          </div>
-          <div className="summary-card card-pending">
-            <div className="summary-label">Initial GM</div>
-            <div className="summary-value summary-value-sm">{(initialGM * 100).toFixed(2)}%</div>
-          </div>
-          <div className={`summary-card ${expectedGM1 >= 0.15 ? 'card-delivered' : 'card-cost'}`}>
-            <div className="summary-label">Expected GM (미반영)</div>
-            <div className="summary-value summary-value-sm">{(expectedGM1 * 100).toFixed(2)}%</div>
-          </div>
-          <div className={`summary-card ${expectedGM2 >= 0.15 ? 'card-delivered' : 'card-cost'}`}>
-            <div className="summary-label">Expected GM (반영)</div>
-            <div className="summary-value summary-value-sm">{(expectedGM2 * 100).toFixed(2)}%</div>
-          </div>
-        </div>
-
-        <div className="summary-cards">
-          <div className="summary-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-            <div className="summary-label">Target GM (%)</div>
-            <div className="summary-value summary-value-sm">
-              <EditableCell value={String(targetGM || '')} type="number" onSave={v => updateProject(project.id, { targetGM: Number(v) || 0 })} placeholder="0" />
+        {/* Row 2: Budget & GM Overview */}
+        <div className="budget-dash-section">
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">예산 현황</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card budget-dash-card-accent-blue">
+                <div className="budget-dash-card-label">Total Budget</div>
+                <div className="budget-dash-card-value">{fmtKRW(totalBudget)}</div>
+              </div>
+              <div className="budget-dash-card budget-dash-card-accent-amber">
+                <div className="budget-dash-card-label">수정 예산 합계</div>
+                <div className="budget-dash-card-value">{fmtKRW(totalRevised)}</div>
+              </div>
             </div>
           </div>
-          <div className="summary-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-            <div className="summary-label">사용 가능 예산 (Target GM 기준)</div>
-            <div className="summary-value summary-value-sm">{fmtKRW(availableBudget)}</div>
-            <div className="summary-sub-value">{fmtUSD(availableBudget / exchangeRate)}</div>
+          <div className="budget-dash-divider" />
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">Gross Margin</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card budget-dash-card-accent-indigo">
+                <div className="budget-dash-card-label">Initial GM</div>
+                <div className="budget-dash-card-value">{(initialGM * 100).toFixed(2)}%</div>
+              </div>
+              <div className={`budget-dash-card ${expectedGM1 >= 0.15 ? 'budget-dash-card-accent-green' : 'budget-dash-card-accent-red'}`}>
+                <div className="budget-dash-card-label">Expected (미반영)</div>
+                <div className="budget-dash-card-value">{(expectedGM1 * 100).toFixed(2)}%</div>
+              </div>
+              <div className={`budget-dash-card ${expectedGM2 >= 0.15 ? 'budget-dash-card-accent-green' : 'budget-dash-card-accent-red'}`}>
+                <div className="budget-dash-card-label">Expected (반영)</div>
+                <div className="budget-dash-card-value">{(expectedGM2 * 100).toFixed(2)}%</div>
+              </div>
+            </div>
           </div>
-          <div className={`summary-card ${remainingBudget >= 0 ? 'card-delivered' : 'card-cost'}`} style={{ borderLeft: `4px solid ${remainingBudget >= 0 ? '#10b981' : '#ef4444'}` }}>
-            <div className="summary-label">잔여 예산 (가용 - 수정예산)</div>
-            <div className="summary-value summary-value-sm" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626' }}>{fmtKRW(remainingBudget)}</div>
-            <div className="summary-sub-value">{fmtUSD(remainingBudget / exchangeRate)}</div>
+          <div className="budget-dash-divider" />
+          <div className="budget-dash-group">
+            <div className="budget-dash-group-label">Target & 잔여</div>
+            <div className="budget-dash-group-cards">
+              <div className="budget-dash-card budget-dash-card-accent-violet">
+                <div className="budget-dash-card-label">Target GM (%)</div>
+                <div className="budget-dash-card-value"><EditableCell value={String(targetGM || '')} type="number" onSave={v => updateProject(project.id, { targetGM: Number(v) || 0 })} placeholder="0" /></div>
+              </div>
+              <div className="budget-dash-card budget-dash-card-accent-violet">
+                <div className="budget-dash-card-label">사용 가능 예산</div>
+                <div className="budget-dash-card-value">{fmtKRW(availableBudget)}</div>
+                <div className="budget-dash-card-sub">{fmtUSD(availableBudget / exchangeRate)}</div>
+              </div>
+              <div className={`budget-dash-card ${remainingBudget >= 0 ? 'budget-dash-card-accent-green' : 'budget-dash-card-accent-red'}`}>
+                <div className="budget-dash-card-label">잔여 예산</div>
+                <div className="budget-dash-card-value" style={{ color: remainingBudget >= 0 ? '#059669' : '#dc2626' }}>{fmtKRW(remainingBudget)}</div>
+                <div className="budget-dash-card-sub">{fmtUSD(remainingBudget / exchangeRate)}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
