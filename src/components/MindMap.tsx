@@ -30,10 +30,15 @@ export default function MindMap({ projects }: MindMapProps) {
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
 
   const visibleProjects = projects.filter(p => !p.hidden);
-  const centerX = 400;
-  const centerY = 300;
-  const radius = 220;
-  const circleR = 50;
+  const centerX = 500;
+  const centerY = 400;
+
+  // Dynamic sizing based on project count
+  const count = visibleProjects.length;
+  const radius = count <= 3 ? 250 : count <= 6 ? 300 : 340;
+  const circleR = 65;
+  const nodeW = 240;
+  const nodeH = 100;
 
   const handleAddProject = () => {
     addProject({
@@ -121,7 +126,7 @@ export default function MindMap({ projects }: MindMapProps) {
       )}
 
       <div className="mindmap-container">
-        <svg viewBox="0 0 800 600" className="mindmap-svg">
+        <svg viewBox="0 0 1000 800" className="mindmap-svg">
           {/* Project nodes and lines */}
           {visibleProjects.map((project, index) => {
             const angle = (2 * Math.PI * index) / visibleProjects.length - Math.PI / 2;
@@ -129,7 +134,6 @@ export default function MindMap({ projects }: MindMapProps) {
             const nodeY = centerY + radius * Math.sin(angle);
             const color = project.color || '#3b82f6';
 
-            // Line starts from outside the circle border
             const lineStartX = centerX + (circleR + 3) * Math.cos(angle);
             const lineStartY = centerY + (circleR + 3) * Math.sin(angle);
 
@@ -139,48 +143,46 @@ export default function MindMap({ projects }: MindMapProps) {
 
             return (
               <g key={project.id}>
-                {/* Connection line - starts outside circle */}
                 <line
                   x1={lineStartX}
                   y1={lineStartY}
                   x2={nodeX}
                   y2={nodeY}
                   stroke={color}
-                  strokeWidth={2}
-                  strokeDasharray="6,3"
+                  strokeWidth={2.5}
+                  strokeDasharray="8,4"
                   opacity={0.5}
                 />
 
-                {/* Node */}
                 <g className="mindmap-node" onClick={() => navigate(`/project/${project.id}`)}>
                   <rect
-                    x={nodeX - 90}
-                    y={nodeY - 40}
-                    width={180}
-                    height={80}
-                    rx={12}
-                    fill="rgba(255,255,255,0.85)"
+                    x={nodeX - nodeW / 2}
+                    y={nodeY - nodeH / 2}
+                    width={nodeW}
+                    height={nodeH}
+                    rx={14}
+                    fill="rgba(255,255,255,0.9)"
                     stroke={color}
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     className="node-rect"
-                    style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.08))' }}
+                    style={{ filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.1))' }}
                   />
-                  <circle cx={nodeX - 70} cy={nodeY - 20} r={5} fill={color} />
-                  <text x={nodeX - 58} y={nodeY - 16} fill="#1a1a2e" fontSize={11} fontWeight="bold">
-                    {project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name}
+                  <circle cx={nodeX - nodeW / 2 + 22} cy={nodeY - 25} r={7} fill={color} />
+                  <text x={nodeX - nodeW / 2 + 36} y={nodeY - 20} fill="#1a1a2e" fontSize={14} fontWeight="bold">
+                    {project.name.length > 22 ? project.name.substring(0, 22) + '...' : project.name}
                   </text>
-                  <text x={nodeX - 70} y={nodeY + 2} fill="#6b7280" fontSize={9}>
+                  <text x={nodeX - nodeW / 2 + 22} y={nodeY + 0} fill="#6b7280" fontSize={12}>
                     {project.client}
                   </text>
-                  <text x={nodeX - 70} y={nodeY + 18} fill={color} fontSize={9}>
+                  <text x={nodeX - nodeW / 2 + 22} y={nodeY + 20} fill={color} fontSize={12} fontWeight="600">
                     {statusLabels[project.status]}
                   </text>
-                  <rect x={nodeX + 10} y={nodeY + 10} width={60} height={6} rx={3} fill="rgba(0,0,0,0.08)" />
-                  <rect x={nodeX + 10} y={nodeY + 10} width={60 * progress / 100} height={6} rx={3} fill={color} />
-                  <text x={nodeX + 75} y={nodeY + 16} fill="#6b7280" fontSize={8}>
+                  <rect x={nodeX + 10} y={nodeY + 12} width={80} height={8} rx={4} fill="rgba(0,0,0,0.08)" />
+                  <rect x={nodeX + 10} y={nodeY + 12} width={80 * progress / 100} height={8} rx={4} fill={color} />
+                  <text x={nodeX + 96} y={nodeY + 20} fill="#6b7280" fontSize={11}>
                     {progress}%
                   </text>
-                  <text x={nodeX + 10} y={nodeY + 2} fill="#6b7280" fontSize={9}>
+                  <text x={nodeX + 10} y={nodeY + 0} fill="#6b7280" fontSize={11}>
                     {totalItems} items
                   </text>
                 </g>
@@ -188,10 +190,10 @@ export default function MindMap({ projects }: MindMapProps) {
             );
           })}
 
-          {/* Center node - drawn on top */}
-          <circle cx={centerX} cy={centerY} r={circleR} fill="rgba(255,255,255,0.9)" stroke="#ef4444" strokeWidth={3} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))' }} />
-          <text x={centerX} y={centerY - 8} textAnchor="middle" fill="#ef4444" fontSize={14} fontWeight="bold">ZEECO</text>
-          <text x={centerX} y={centerY + 12} textAnchor="middle" fill="#6b7280" fontSize={10}>Projects</text>
+          {/* Center node */}
+          <circle cx={centerX} cy={centerY} r={circleR} fill="rgba(255,255,255,0.95)" stroke="#ef4444" strokeWidth={4} style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.12))' }} />
+          <text x={centerX} y={centerY - 10} textAnchor="middle" fill="#ef4444" fontSize={20} fontWeight="bold">ZEECO</text>
+          <text x={centerX} y={centerY + 14} textAnchor="middle" fill="#6b7280" fontSize={14}>Projects</text>
         </svg>
       </div>
     </div>

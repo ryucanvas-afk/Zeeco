@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -87,10 +87,16 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
       endDate: (ins.endDate as string) || '',
       items: (ins.items as string[]) || [],
       categories: (ins.categories as string[]) || [],
+      unit: (ins.unit as string) || '',
       location: (ins.location as string) || '',
       inspector: (ins.inspector as string) || '',
       observer: (ins.observer as string) || '',
       notes: (ins.notes as string) || '',
+      color: (ins.color as string) || '',
+    })),
+    inspectionCommonNotes: ((p.inspectionCommonNotes as Record<string, unknown>[]) || []).map((n: Record<string, unknown>) => ({
+      id: (n.id as string) || uuidv4(),
+      text: (n.text as string) || '',
     })),
     factoryPurchases: (p.factoryPurchases as Project['factoryPurchases']) || [],
     budgetSnapshots: (p.budgetSnapshots as Project['budgetSnapshots']) || [],
@@ -174,7 +180,7 @@ function loadProjects(): Project[] {
 
 interface ProjectContextType {
   projects: Project[];
-  addProject: (project: Omit<Project, 'id' | 'items' | 'inspections' | 'factoryPurchases'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'items' | 'inspections' | 'inspectionCommonNotes' | 'factoryPurchases'>) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   toggleHideProject: (id: string) => void;
@@ -303,8 +309,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setProjects(sampleProjects);
   };
 
-  const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'factoryPurchases'>) => {
-    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [], scheduleSnapshots: [] }]);
+  const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'inspectionCommonNotes' | 'factoryPurchases'>) => {
+    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], inspectionCommonNotes: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [], scheduleSnapshots: [] }]);
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {

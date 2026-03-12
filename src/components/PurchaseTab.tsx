@@ -180,59 +180,52 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
 
   return (
     <div className="purchase-tab">
-      {/* Summary */}
-      <div className="summary-cards">
-        <div className="summary-card summary-card-clickable" onClick={() => { setActiveSubTab('all'); resetFilters(); }}>
-          <div className="summary-value">{allPurchases.length}</div>
-          <div className="summary-label">전체 발주</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('rfq_writing'); }}>
-          <div className="summary-value">{statusSummary.rfq_writing}</div>
-          <div className="summary-label">RFQ 작성 중</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('rfq_requesting'); }}>
-          <div className="summary-value">{statusSummary.rfq_requesting}</div>
-          <div className="summary-label">견적 요청 중</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('price_negotiating'); }}>
-          <div className="summary-value">{statusSummary.price_negotiating}</div>
-          <div className="summary-label">금액 협의 중</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('internal_approval'); }}>
-          <div className="summary-value">{statusSummary.internal_approval}</div>
-          <div className="summary-label">내부 결재 중</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('zoe_approval'); }}>
-          <div className="summary-value">{statusSummary.zoe_approval}</div>
-          <div className="summary-label">ZOE 결재 중</div>
-        </div>
-        <div className="summary-card card-pending summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('po_reviewing'); }}>
-          <div className="summary-value">{statusSummary.po_reviewing}</div>
-          <div className="summary-label">발주서 검토 중</div>
-        </div>
-        <div className="summary-card card-ordered summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('po_completed'); }}>
-          <div className="summary-value">{statusSummary.po_completed}</div>
-          <div className="summary-label">발주 완료</div>
-        </div>
-        <div className="summary-card card-shipped summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('manufacturing'); }}>
-          <div className="summary-value">{statusSummary.manufacturing}</div>
-          <div className="summary-label">제작 중</div>
-        </div>
-        <div className="summary-card card-shipped summary-card-clickable" onClick={() => { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus('inspecting'); }}>
-          <div className="summary-value">{statusSummary.inspecting}</div>
-          <div className="summary-label">검사 중</div>
-        </div>
-        <div className="summary-card card-delivered summary-card-clickable" onClick={() => { setActiveSubTab('delivered'); resetFilters(); }}>
-          <div className="summary-value">{statusSummary.delivered}</div>
-          <div className="summary-label">납품 완료</div>
-        </div>
-        <div className="summary-card card-cost">
-          <div className="summary-value summary-value-sm">
-            {totalCostKRW > 0 && <span>{formatNumber(totalCostKRW)} KRW</span>}
-            {totalVATKRW > 0 && <span className="vat-text">VAT: {formatNumber(totalVATKRW)} KRW</span>}
-            {totalCostUSD > 0 && <span>${formatNumber(totalCostUSD)} USD</span>}
+      {/* Dashboard Header */}
+      <div className="purchase-dashboard">
+        {/* Top row: Total + Cost */}
+        <div className="purchase-dashboard-top">
+          <div className="purchase-total-card" onClick={() => { setActiveSubTab('all'); resetFilters(); }}>
+            <div className="purchase-total-value">{allPurchases.length}</div>
+            <div className="purchase-total-label">전체 발주</div>
           </div>
-          <div className="summary-label">총 발주 금액</div>
+          <div className="purchase-cost-card">
+            <div className="purchase-cost-values">
+              {totalCostKRW > 0 && <span className="purchase-cost-line">{formatNumber(totalCostKRW)} KRW</span>}
+              {totalVATKRW > 0 && <span className="purchase-cost-line purchase-cost-vat">VAT: {formatNumber(totalVATKRW)} KRW</span>}
+              {totalCostUSD > 0 && <span className="purchase-cost-line">${formatNumber(totalCostUSD)} USD</span>}
+            </div>
+            <div className="purchase-total-label">총 발주 금액</div>
+          </div>
+        </div>
+
+        {/* Process Roadmap Flow */}
+        <div className="purchase-roadmap">
+          {[
+            { key: 'rfq_writing', label: 'RFQ 작성', count: statusSummary.rfq_writing, phase: 'prepare' },
+            { key: 'rfq_requesting', label: '견적 요청', count: statusSummary.rfq_requesting, phase: 'prepare' },
+            { key: 'price_negotiating', label: '금액 협의', count: statusSummary.price_negotiating, phase: 'prepare' },
+            { key: 'internal_approval', label: '내부 결재', count: statusSummary.internal_approval, phase: 'approval' },
+            { key: 'zoe_approval', label: 'ZOE 결재', count: statusSummary.zoe_approval, phase: 'approval' },
+            { key: 'po_reviewing', label: '발주서 검토', count: statusSummary.po_reviewing, phase: 'approval' },
+            { key: 'po_completed', label: '발주 완료', count: statusSummary.po_completed, phase: 'ordered' },
+            { key: 'manufacturing', label: '제작 중', count: statusSummary.manufacturing, phase: 'production' },
+            { key: 'inspecting', label: '검사 중', count: statusSummary.inspecting, phase: 'production' },
+            { key: 'delivered', label: '납품 완료', count: statusSummary.delivered, phase: 'done' },
+          ].map((step, idx, arr) => (
+            <div key={step.key} className="purchase-roadmap-step-wrap">
+              <div
+                className={`purchase-roadmap-step roadmap-phase-${step.phase} ${step.count > 0 ? 'roadmap-active' : ''}`}
+                onClick={() => {
+                  if (step.key === 'delivered') { setActiveSubTab('delivered'); resetFilters(); }
+                  else { setActiveSubTab('in_progress'); resetFilters(); setFilterStatus(step.key); }
+                }}
+              >
+                <div className="roadmap-step-count">{step.count}</div>
+                <div className="roadmap-step-label">{step.label}</div>
+              </div>
+              {idx < arr.length - 1 && <div className="roadmap-arrow">&#9654;</div>}
+            </div>
+          ))}
         </div>
       </div>
 

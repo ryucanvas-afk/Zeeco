@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Project, InspectionEntry } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import InspectionPdfPreview from './InspectionPdfPreview';
+import { v4 as uuidv4 } from 'uuid';
 
 interface InspectionTabProps {
   project: Project;
@@ -39,19 +40,60 @@ function getRangePosition(dateStr: string, startStr: string, endStr: string): 's
   return null;
 }
 
+function formatDateShort(dateStr: string) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  return `${parts[0]}.${parts[1]}.${parts[2]}`;
+}
+
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-const RANGE_COLORS = [
-  { bg: 'rgba(59, 130, 246, 0.18)', border: '#3b82f6' },
-  { bg: 'rgba(16, 185, 129, 0.18)', border: '#10b981' },
-  { bg: 'rgba(245, 158, 11, 0.18)', border: '#f59e0b' },
-  { bg: 'rgba(99, 102, 241, 0.18)', border: '#6366f1' },
-  { bg: 'rgba(236, 72, 153, 0.18)', border: '#ec4899' },
-  { bg: 'rgba(20, 184, 166, 0.18)', border: '#14b8a6' },
+const COLOR_PRESETS = [
+  { bg: 'rgba(59, 130, 246, 0.18)', border: '#3b82f6', label: 'Blue' },
+  { bg: 'rgba(16, 185, 129, 0.18)', border: '#10b981', label: 'Green' },
+  { bg: 'rgba(245, 158, 11, 0.18)', border: '#f59e0b', label: 'Amber' },
+  { bg: 'rgba(99, 102, 241, 0.18)', border: '#6366f1', label: 'Indigo' },
+  { bg: 'rgba(236, 72, 153, 0.18)', border: '#ec4899', label: 'Pink' },
+  { bg: 'rgba(20, 184, 166, 0.18)', border: '#14b8a6', label: 'Teal' },
+  { bg: 'rgba(239, 68, 68, 0.18)', border: '#ef4444', label: 'Red' },
+  { bg: 'rgba(139, 92, 246, 0.18)', border: '#8b5cf6', label: 'Violet' },
+  { bg: 'rgba(249, 115, 22, 0.18)', border: '#f97316', label: 'Orange' },
+  { bg: 'rgba(6, 182, 212, 0.18)', border: '#06b6d4', label: 'Cyan' },
 ];
 
+function getInsColors(ins: InspectionEntry, fallbackIdx: number) {
+  if (ins.color) {
+    const preset = COLOR_PRESETS.find(c => c.border === ins.color);
+    if (preset) return { bg: preset.bg, border: preset.border };
+    return { bg: ins.color + '30', border: ins.color };
+  }
+  const c = COLOR_PRESETS[fallbackIdx % COLOR_PRESETS.length];
+  return { bg: c.bg, border: c.border };
+}
+
+function formatInspSummary(ins: InspectionEntry): string {
+  // Format: 날짜 : Unit X_검사항목 for 검사품목_장소_참관업체
+  const date = ins.endDate && ins.endDate !== ins.date
+    ? `${formatDateShort(ins.date)}~${formatDateShort(ins.endDate)}`
+    : formatDateShort(ins.date);
+  const unit = ins.unit ? `${ins.unit}_` : '';
+  const cats = ins.categories.filter(c => c.trim()).join(', ');
+  const items = ins.items.filter(i => i.trim()).join(', ');
+  const location = ins.location || '';
+  const observer = ins.observer || '';
+
+  let result = date;
+  result += ' : ';
+  result += unit;
+  if (cats) result += cats;
+  if (items) result += ` for ${items}`;
+  if (location) result += `_${location}`;
+  if (observer) result += ` - ${observer}`;
+  return result;
+}
+
 export default function InspectionTab({ project }: InspectionTabProps) {
-  const { addInspection, updateInspection, deleteInspection } = useProjects();
+  const { addInspection, updateInspection, deleteInspection, updateProject } = useProjects();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -63,14 +105,75 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     endDate: '',
     items: [''],
     categories: [''],
+    unit: '',
     location: '',
     inspector: '',
     observer: '',
     notes: '',
+    color: '',
   });
   const [showPdfPreview, setShowPdfPreview] = useState(false);
 
+  // Clipboard for copy/paste
+  const [clipboardIns, setClipboardIns] = useState<InspectionEntry | null>(null);
+
+  // Drag state
+  const [dragInsId, setDragInsId] = useState<string | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+
+  // Filter states
+  const [filterItem, setFilterItem] = useState('all');
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterInspector, setFilterInspector] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterUnit, setFilterUnit] = useState('all');
+
+  // Common notes
+  const commonNotes = project.inspectionCommonNotes || [];
+  const [newNoteText, setNewNoteText] = useState('');
+
   const inspections = (project.inspections || []);
+
+  // Extract unique values for filters
+  const uniqueItems = useMemo(() => {
+    const set = new Set<string>();
+    inspections.forEach(ins => ins.items.forEach(i => { if (i.trim()) set.add(i); }));
+    return [...set].sort();
+  }, [inspections]);
+
+  const uniqueLocations = useMemo(() =>
+    [...new Set(inspections.map(i => i.location).filter(Boolean))].sort(),
+    [inspections]
+  );
+
+  const uniqueInspectors = useMemo(() =>
+    [...new Set(inspections.map(i => i.inspector).filter(Boolean))].sort(),
+    [inspections]
+  );
+
+  const uniqueCategories = useMemo(() => {
+    const set = new Set<string>();
+    inspections.forEach(ins => ins.categories.forEach(c => { if (c.trim()) set.add(c); }));
+    return [...set].sort();
+  }, [inspections]);
+
+  const uniqueUnits = useMemo(() =>
+    [...new Set(inspections.map(i => i.unit).filter(Boolean))].sort(),
+    [inspections]
+  );
+
+  const hasActiveFilters = filterItem !== 'all' || filterLocation !== 'all' || filterInspector !== 'all' || filterCategory !== 'all' || filterUnit !== 'all';
+
+  // Filter inspections
+  const filteredInspections = useMemo(() => {
+    let result = inspections;
+    if (filterItem !== 'all') result = result.filter(ins => ins.items.includes(filterItem));
+    if (filterLocation !== 'all') result = result.filter(ins => ins.location === filterLocation);
+    if (filterInspector !== 'all') result = result.filter(ins => ins.inspector === filterInspector);
+    if (filterCategory !== 'all') result = result.filter(ins => ins.categories.includes(filterCategory));
+    if (filterUnit !== 'all') result = result.filter(ins => ins.unit === filterUnit);
+    return result;
+  }, [inspections, filterItem, filterLocation, filterInspector, filterCategory, filterUnit]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -92,7 +195,7 @@ export default function InspectionTab({ project }: InspectionTabProps) {
 
   const getInspectionsForDay = (day: number): InspectionEntry[] => {
     const dateStr = getDateStr(day);
-    return inspections.filter(ins => isDateInRange(dateStr, ins.date, ins.endDate || ins.date));
+    return filteredInspections.filter(ins => isDateInRange(dateStr, ins.date, ins.endDate || ins.date));
   };
 
   const handleDayClick = (day: number) => {
@@ -108,10 +211,12 @@ export default function InspectionTab({ project }: InspectionTabProps) {
       endDate: '',
       items: [''],
       categories: [''],
+      unit: '',
       location: '',
       inspector: '',
       observer: '',
       notes: '',
+      color: '',
     });
     setEditingId(null);
     setShowForm(true);
@@ -124,13 +229,91 @@ export default function InspectionTab({ project }: InspectionTabProps) {
       endDate: ins.endDate || '',
       items: ins.items.length > 0 ? [...ins.items] : [''],
       categories: ins.categories.length > 0 ? [...ins.categories] : [''],
+      unit: ins.unit || '',
       location: ins.location,
       inspector: ins.inspector,
       observer: ins.observer,
       notes: ins.notes || '',
+      color: ins.color || '',
     });
     setEditingId(ins.id);
     setShowForm(true);
+  };
+
+  const handleCopy = (ins: InspectionEntry) => {
+    setClipboardIns(ins);
+  };
+
+  const handlePaste = (targetDate: string) => {
+    if (!clipboardIns) return;
+    // Calculate duration offset
+    const origStart = new Date(clipboardIns.date);
+    const target = new Date(targetDate);
+    const diffDays = Math.round((target.getTime() - origStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    let newEndDate = '';
+    if (clipboardIns.endDate) {
+      const origEnd = new Date(clipboardIns.endDate);
+      const newEnd = new Date(origEnd.getTime() + diffDays * 24 * 60 * 60 * 1000);
+      newEndDate = dateToStr(newEnd);
+    }
+
+    addInspection(project.id, {
+      date: targetDate,
+      endDate: newEndDate,
+      items: [...clipboardIns.items],
+      categories: [...clipboardIns.categories],
+      unit: clipboardIns.unit || '',
+      location: clipboardIns.location,
+      inspector: clipboardIns.inspector,
+      observer: clipboardIns.observer,
+      notes: clipboardIns.notes || '',
+      color: clipboardIns.color || '',
+    });
+  };
+
+  const handleDragStart = (insId: string) => {
+    setDragInsId(insId);
+  };
+
+  const handleDragOverCell = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    setDragOverDate(dateStr);
+  };
+
+  const handleDropOnCell = (targetDate: string) => {
+    if (!dragInsId) return;
+    const ins = inspections.find(i => i.id === dragInsId);
+    if (!ins) return;
+
+    // Calculate date offset
+    const origStart = new Date(ins.date);
+    const target = new Date(targetDate);
+    const diffDays = Math.round((target.getTime() - origStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      setDragInsId(null);
+      setDragOverDate(null);
+      return;
+    }
+
+    // Shift both start and end dates by the diff
+    const newStart = targetDate;
+    let newEnd = '';
+    if (ins.endDate) {
+      const origEnd = new Date(ins.endDate);
+      const shifted = new Date(origEnd.getTime() + diffDays * 24 * 60 * 60 * 1000);
+      newEnd = dateToStr(shifted);
+    }
+
+    updateInspection(project.id, ins.id, { date: newStart, endDate: newEnd });
+    setDragInsId(null);
+    setDragOverDate(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragInsId(null);
+    setDragOverDate(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,10 +325,12 @@ export default function InspectionTab({ project }: InspectionTabProps) {
       endDate: formData.endDate,
       items: cleanItems,
       categories: cleanCategories,
+      unit: formData.unit,
       location: formData.location,
       inspector: formData.inspector,
       observer: formData.observer,
       notes: formData.notes,
+      color: formData.color,
     };
 
     if (editingId) {
@@ -173,34 +358,57 @@ export default function InspectionTab({ project }: InspectionTabProps) {
     setFormData({ ...formData, categories: newCats });
   };
 
-  const selectedInspections = selectedDate ? inspections.filter(ins => isDateInRange(selectedDate, ins.date, ins.endDate || ins.date)) : [];
+  const selectedInspections = selectedDate ? filteredInspections.filter(ins => isDateInRange(selectedDate, ins.date, ins.endDate || ins.date)) : [];
 
   // Build calendar grid
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
-  // Build rows of 7
   const calendarRows: (number | null)[][] = [];
   for (let i = 0; i < calendarDays.length; i += 7) {
     calendarRows.push(calendarDays.slice(i, i + 7));
   }
-  // Pad last row
   const lastRow = calendarRows[calendarRows.length - 1];
   while (lastRow.length < 7) lastRow.push(null);
 
   const todayStr = dateToStr(today);
 
-  // Assign colors to inspections for range visualization
-  const insColorMap = new Map<string, number>();
-  inspections.forEach((ins, idx) => {
-    insColorMap.set(ins.id, idx % RANGE_COLORS.length);
-  });
+  // Color index map for fallback
+  const insIndexMap = new Map<string, number>();
+  inspections.forEach((ins, idx) => { insIndexMap.set(ins.id, idx); });
 
   const formatDateRange = (ins: InspectionEntry) => {
     if (!ins.endDate || ins.date === ins.endDate) return ins.date;
     return `${ins.date} ~ ${ins.endDate}`;
   };
+
+  const addCommonNote = () => {
+    if (!newNoteText.trim()) return;
+    const updated = [...commonNotes, { id: uuidv4(), text: newNoteText.trim() }];
+    updateProject(project.id, { inspectionCommonNotes: updated } as Partial<Project>);
+    setNewNoteText('');
+  };
+
+  const removeCommonNote = (noteId: string) => {
+    const updated = commonNotes.filter(n => n.id !== noteId);
+    updateProject(project.id, { inspectionCommonNotes: updated } as Partial<Project>);
+  };
+
+  const updateCommonNote = (noteId: string, text: string) => {
+    const updated = commonNotes.map(n => n.id === noteId ? { ...n, text } : n);
+    updateProject(project.id, { inspectionCommonNotes: updated } as Partial<Project>);
+  };
+
+  // Get inspections for current month for the summary bar
+  const monthInspections = useMemo(() => {
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+    return filteredInspections.filter(ins => {
+      const insEnd = ins.endDate || ins.date;
+      return ins.date <= monthEnd && insEnd >= monthStart;
+    });
+  }, [filteredInspections, year, month, daysInMonth]);
 
   return (
     <div className="inspection-tab">
@@ -210,7 +418,44 @@ export default function InspectionTab({ project }: InspectionTabProps) {
         <span className="insp-calendar-title">{year}년 {MONTH_NAMES[month]}</span>
         <button className="btn btn-secondary" onClick={nextMonth}>&gt;</button>
         <button className="btn btn-sm btn-primary" onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); }} style={{ marginLeft: 8 }}>오늘</button>
+        {clipboardIns && (
+          <span className="insp-clipboard-indicator" title={`복사됨: ${clipboardIns.items.join(', ')}`}>
+            복사됨
+          </span>
+        )}
         <button className="btn btn-sm btn-secondary" onClick={() => setShowPdfPreview(true)} style={{ marginLeft: 'auto' }}>PDF 미리보기 / 추출</button>
+      </div>
+
+      {/* Filters */}
+      <div className="insp-filters">
+        <select value={filterItem} onChange={e => setFilterItem(e.target.value)} className="insp-filter-select">
+          <option value="all">전체 품목</option>
+          {uniqueItems.map(i => <option key={i} value={i}>{i}</option>)}
+        </select>
+        <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="insp-filter-select">
+          <option value="all">전체 장소</option>
+          {uniqueLocations.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <select value={filterInspector} onChange={e => setFilterInspector(e.target.value)} className="insp-filter-select">
+          <option value="all">전체 담당자</option>
+          {uniqueInspectors.map(i => <option key={i} value={i}>{i}</option>)}
+        </select>
+        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="insp-filter-select">
+          <option value="all">전체 항목</option>
+          {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterUnit} onChange={e => setFilterUnit(e.target.value)} className="insp-filter-select">
+          <option value="all">전체 Unit</option>
+          {uniqueUnits.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+        {hasActiveFilters && (
+          <button className="btn btn-sm btn-ghost" onClick={() => { setFilterItem('all'); setFilterLocation('all'); setFilterInspector('all'); setFilterCategory('all'); setFilterUnit('all'); }}>
+            필터 초기화
+          </button>
+        )}
+        {hasActiveFilters && (
+          <span className="insp-filter-count">{filteredInspections.length}건 / {inspections.length}건</span>
+        )}
       </div>
 
       {/* Side-by-side: Calendar + Detail Panel */}
@@ -238,21 +483,29 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                     return (
                       <div
                         key={day}
-                        className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''}`}
+                        className={`insp-calendar-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${dayInspections.length > 0 ? 'has-data' : ''} ${dragOverDate === dateStr ? 'insp-drag-over' : ''}`}
                         onClick={() => handleDayClick(day)}
+                        onDragOver={e => handleDragOverCell(e, dateStr)}
+                        onDragLeave={() => setDragOverDate(null)}
+                        onDrop={e => { e.preventDefault(); handleDropOnCell(dateStr); }}
                       >
                         <div className="insp-cell-header">
                           <span className={`insp-day-num ${isSun ? 'sun' : ''} ${isSat ? 'sat' : ''}`}>{day}</span>
-                          {dayInspections.length === 0 && (
-                            <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
-                          )}
+                          <div className="insp-cell-actions">
+                            {clipboardIns && (
+                              <button className="insp-paste-btn" onClick={e => { e.stopPropagation(); handlePaste(dateStr); }} title="붙여넣기">&#9112;</button>
+                            )}
+                            {dayInspections.length === 0 && (
+                              <button className="insp-add-btn" onClick={e => { e.stopPropagation(); openAddForm(dateStr); }} title="검사 추가">+</button>
+                            )}
+                          </div>
                         </div>
                         <div className="insp-cell-content">
                           {dayInspections.map(ins => {
-                            const colorIdx = insColorMap.get(ins.id) || 0;
-                            const colors = RANGE_COLORS[colorIdx];
+                            const fallbackIdx = insIndexMap.get(ins.id) || 0;
+                            const colors = getInsColors(ins, fallbackIdx);
                             const pos = getRangePosition(dateStr, ins.date, ins.endDate || ins.date);
-                            const rangeClass = pos && pos !== 'single' ? `insp-range-${pos}` : '';
+                            const rangeClass = pos ? `insp-range-${pos}` : '';
 
                             return (
                               <div
@@ -260,23 +513,35 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                                 className={`insp-cell-entry ${rangeClass}`}
                                 style={{
                                   background: colors.bg,
-                                  borderLeftColor: colors.border,
+                                  borderLeftColor: (pos === 'middle' || pos === 'end') ? 'transparent' : colors.border,
+                                  borderRightColor: (pos === 'start' || pos === 'middle') ? 'transparent' : undefined,
                                 }}
+                                draggable
+                                onDragStart={e => { e.stopPropagation(); handleDragStart(ins.id); }}
+                                onDragEnd={handleDragEnd}
                                 onClick={e => { e.stopPropagation(); setSelectedDate(dateStr); }}
                               >
-                                <div className="insp-cell-items">
-                                  {ins.items.map((item, i) => (
-                                    <span key={i} className="insp-cell-tag">{item}</span>
-                                  ))}
-                                </div>
-                                {ins.categories.length > 0 && ins.categories[0] && (
-                                  <div className="insp-cell-cats">
-                                    {ins.categories.map((cat, i) => (
-                                      <span key={i} className="insp-cell-cat-tag">{cat}</span>
-                                    ))}
-                                  </div>
+                                {(pos === 'single' || pos === 'start' || !pos) && (
+                                  <>
+                                    <div className="insp-cell-items">
+                                      {ins.items.map((item, i) => (
+                                        <span key={i} className="insp-cell-tag">{item}</span>
+                                      ))}
+                                    </div>
+                                    {ins.unit && <span className="insp-cell-unit">{ins.unit}</span>}
+                                    {ins.categories.length > 0 && ins.categories[0] && (
+                                      <div className="insp-cell-cats">
+                                        {ins.categories.map((cat, i) => (
+                                          <span key={i} className="insp-cell-cat-tag">{cat}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {ins.location && <span className="insp-cell-location">{ins.location}</span>}
+                                  </>
                                 )}
-                                {ins.location && <span className="insp-cell-location">{ins.location}</span>}
+                                {pos === 'end' && (
+                                  <span className="insp-cell-location" style={{ fontSize: '8px', opacity: 0.7 }}>~{ins.endDate?.split('-')[2]}</span>
+                                )}
                               </div>
                             );
                           })}
@@ -311,6 +576,10 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                       <input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} min={formData.date} />
                     </div>
                     <div className="form-group">
+                      <label>Unit</label>
+                      <input type="text" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="Unit 1" />
+                    </div>
+                    <div className="form-group">
                       <label>장소</label>
                       <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="검사 장소" />
                     </div>
@@ -321,6 +590,35 @@ export default function InspectionTab({ project }: InspectionTabProps) {
                     <div className="form-group">
                       <label>참관 업체</label>
                       <input type="text" value={formData.observer} onChange={e => setFormData({ ...formData, observer: e.target.value })} placeholder="참관 업체" />
+                    </div>
+                  </div>
+
+                  {/* Color Picker */}
+                  <div className="form-group" style={{ marginTop: 8 }}>
+                    <label>배경 색상</label>
+                    <div className="insp-color-picker">
+                      <div
+                        className={`insp-color-swatch ${!formData.color ? 'active' : ''}`}
+                        style={{ background: 'linear-gradient(135deg, #e5e7eb 50%, #f3f4f6 50%)' }}
+                        onClick={() => setFormData({ ...formData, color: '' })}
+                        title="자동"
+                      />
+                      {COLOR_PRESETS.map(c => (
+                        <div
+                          key={c.border}
+                          className={`insp-color-swatch ${formData.color === c.border ? 'active' : ''}`}
+                          style={{ background: c.border }}
+                          onClick={() => setFormData({ ...formData, color: c.border })}
+                          title={c.label}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={formData.color || '#3b82f6'}
+                        onChange={e => setFormData({ ...formData, color: e.target.value })}
+                        className="insp-color-custom"
+                        title="커스텀 색상"
+                      />
                     </div>
                   </div>
 
@@ -365,17 +663,28 @@ export default function InspectionTab({ project }: InspectionTabProps) {
               {selectedInspections.length > 0 ? (
                 <div className="insp-detail-list">
                   {selectedInspections.map(ins => {
-                    const colorIdx = insColorMap.get(ins.id) || 0;
-                    const colors = RANGE_COLORS[colorIdx];
+                    const fallbackIdx = insIndexMap.get(ins.id) || 0;
+                    const colors = getInsColors(ins, fallbackIdx);
                     return (
                       <div key={ins.id} className="insp-detail-card" style={{ borderLeftColor: colors.border }}>
                         <div className="insp-detail-card-header">
                           <span className="insp-detail-date">{formatDateRange(ins)}</span>
-                          <div className="action-btns">
-                            <button className="btn-icon" onClick={() => openEditForm(ins)} title="수정">&#9998;</button>
-                            <button className="btn-icon btn-danger" onClick={() => deleteInspection(project.id, ins.id)} title="삭제">✕</button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div className="insp-detail-color-dot" style={{ background: colors.border }} />
+                            <div className="action-btns">
+                              <button className="btn-icon" onClick={() => handleCopy(ins)} title="복사">&#128203;</button>
+                              <button className="btn-icon" onClick={() => openEditForm(ins)} title="수정">&#9998;</button>
+                              <button className="btn-icon btn-danger" onClick={() => deleteInspection(project.id, ins.id)} title="삭제">✕</button>
+                            </div>
                           </div>
                         </div>
+
+                        {ins.unit && (
+                          <div className="insp-detail-section">
+                            <label>Unit</label>
+                            <span className="tag tag-unit">{ins.unit}</span>
+                          </div>
+                        )}
 
                         <div className="insp-detail-section">
                           <label>검사 품목</label>
@@ -426,6 +735,56 @@ export default function InspectionTab({ project }: InspectionTabProps) {
               <p>달력에서 날짜를 선택하면<br />검사 세부 내용이 여기에 표시됩니다.</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Inspection Summary List */}
+      {monthInspections.length > 0 && (
+        <div className="insp-summary-bar">
+          {monthInspections
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .map(ins => {
+              const fallbackIdx = insIndexMap.get(ins.id) || 0;
+              const colors = getInsColors(ins, fallbackIdx);
+              return (
+                <div key={ins.id} className="insp-summary-item" onClick={() => setSelectedDate(ins.date)} style={{ cursor: 'pointer' }}>
+                  <span className="insp-summary-dot" style={{ background: colors.border }} />
+                  <span>{formatInspSummary(ins)}</span>
+                </div>
+              );
+            })}
+        </div>
+      )}
+
+      {/* Common Notes Section */}
+      <div className="insp-common-notes">
+        <div className="insp-common-notes-header">
+          <h4>공통 Notes</h4>
+        </div>
+        <div className="insp-common-notes-list">
+          {commonNotes.map((note, idx) => (
+            <div key={note.id} className="insp-common-note-item">
+              <span className="insp-common-note-num">{idx + 1}.</span>
+              <input
+                type="text"
+                value={note.text}
+                onChange={e => updateCommonNote(note.id, e.target.value)}
+                className="insp-common-note-input"
+              />
+              <button className="btn-icon btn-danger" onClick={() => removeCommonNote(note.id)} title="삭제">✕</button>
+            </div>
+          ))}
+          <div className="insp-common-note-add">
+            <input
+              type="text"
+              value={newNoteText}
+              onChange={e => setNewNoteText(e.target.value)}
+              placeholder="새 공통 note 입력..."
+              className="insp-common-note-input"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCommonNote(); } }}
+            />
+            <button className="btn btn-sm btn-primary" onClick={addCommonNote}>+ 추가</button>
+          </div>
         </div>
       </div>
 
