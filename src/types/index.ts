@@ -5,6 +5,7 @@ export type PurchaseStatus =
   | 'rfq_writing'
   | 'rfq_requesting'
   | 'price_negotiating'
+  | 'po_writing'
   | 'internal_approval'
   | 'zoe_approval'
   | 'po_reviewing'

@@ -2544,8 +2544,80 @@ body {
 }
 
 .insp-calendar-row {
+  position: relative;
+}
+
+.insp-calendar-row-cells {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+}
+
+/* Spanning bars layer */
+.insp-span-layer {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.insp-span-bar {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: pointer;
+  overflow: hidden;
+  font-size: 10px;
+  transition: filter 0.15s;
+  box-sizing: border-box;
+}
+
+.insp-span-bar:hover {
+  filter: brightness(0.95);
+  z-index: 3;
+}
+
+.insp-span-bar-content {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.insp-span-bar-items {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.insp-span-bar-unit {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.5);
+  padding: 0 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.insp-span-bar-cats {
+  font-size: 9px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insp-span-bar-loc {
+  font-size: 9px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .insp-calendar-cell {
@@ -6962,7 +7034,7 @@ body {
 }
 
 .purchase-total-card {
-  padding: 16px 24px;
+  padding: 20px 32px;
   background: var(--bg-primary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
@@ -6978,20 +7050,20 @@ body {
 }
 
 .purchase-total-value {
-  font-size: 32px;
+  font-size: 42px;
   font-weight: 800;
   color: var(--text-primary);
 }
 
 .purchase-total-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 4px;
   font-weight: 600;
 }
 
 .purchase-cost-card {
-  padding: 16px 24px;
+  padding: 20px 32px;
   background: var(--bg-primary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
@@ -7006,7 +7078,7 @@ body {
 }
 
 .purchase-cost-line {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -7022,7 +7094,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 12px 8px;
+  padding: 16px 12px;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
@@ -7038,11 +7110,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 14px;
+  padding: 12px 16px;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s;
-  min-width: 70px;
+  min-width: 78px;
   text-align: center;
   border: 1px solid transparent;
 }
@@ -7064,23 +7136,23 @@ body {
 .roadmap-phase-done { color: #10b981; }
 
 .roadmap-step-count {
-  font-size: 22px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1;
 }
 
 .roadmap-step-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  margin-top: 3px;
+  margin-top: 4px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .roadmap-arrow {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
-  padding: 0 2px;
+  padding: 0 3px;
   opacity: 0.5;
 }
 
@@ -7167,26 +7239,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Inspection range connected styling */
-.insp-cell-entry.insp-range-start {
-  border-radius: 4px 0 0 4px;
-  margin-right: -1px;
-  border-right: none;
-}
-
-.insp-cell-entry.insp-range-middle {
-  border-radius: 0;
-  margin-left: -1px;
-  margin-right: -1px;
-  border-left: none;
-  border-right: none;
-}
-
-.insp-cell-entry.insp-range-end {
-  border-radius: 0 4px 4px 0;
-  margin-left: -1px;
-  border-left: none;
-}
+/* (Spanning bars now handled by .insp-span-layer) */
 
 .insp-cell-unit {
   font-size: 8px;
