@@ -5195,6 +5195,122 @@ body {
   margin-top: 1px;
 }
 
+/* Monthly Cash Flow - Schedule style */
+.cf-schedule {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.cf-month-card {
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cf-month-card.cf-month-current {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px var(--accent-blue), var(--shadow-sm);
+}
+
+.cf-month-card-header {
+  background: #f1f5f9;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cf-month-current .cf-month-card-header {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.cf-month-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.cf-month-card-summary {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cf-month-in { color: #3b82f6; }
+.cf-month-out { color: #f59e0b; }
+.cf-month-bal { font-weight: 700; }
+
+.cf-month-card-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.cf-month-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cf-month-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 0;
+}
+
+.cf-month-group-income .cf-month-group-label { color: #3b82f6; }
+.cf-month-group-received .cf-month-group-label { color: #10b981; }
+.cf-month-group-expense .cf-month-group-label { color: #f59e0b; }
+.cf-month-group-paid .cf-month-group-label { color: #ef4444; }
+
+.cf-month-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.cf-item-income { background: rgba(59, 130, 246, 0.06); }
+.cf-item-received { background: rgba(16, 185, 129, 0.06); }
+.cf-item-expense { background: rgba(245, 158, 11, 0.06); }
+.cf-item-paid { background: rgba(239, 68, 68, 0.06); }
+
+.cf-item-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.cf-item-amount {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.cf-month-card-footer {
+  background: #f8fafc;
+  border-top: 1px solid var(--border-color);
+  padding: 5px 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .budget-summary-section {
   display: flex;
   flex-direction: column;
