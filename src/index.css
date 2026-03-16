@@ -5311,6 +5311,422 @@ body {
   font-weight: 500;
 }
 
+/* ===== Cash Flow PDF Report ===== */
+.cf-pdf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+.cf-pdf-container {
+  width: 96vw;
+  height: 94vh;
+  background: #f0f2f5;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.cf-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #1e293b;
+  color: #fff;
+}
+
+.cf-pdf-toolbar h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cf-pdf-toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cf-pdf-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* The PDF page - A4 landscape proportions */
+.cf-pdf-page {
+  width: 1120px;
+  min-height: 780px;
+  background: #ffffff;
+  padding: 24px 28px 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Header */
+.cf-pdf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid #1e293b;
+  padding-bottom: 8px;
+}
+
+.cf-pdf-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.cf-pdf-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.cf-pdf-header-right {
+  text-align: right;
+}
+
+.cf-pdf-meta {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* KPI Row */
+.cf-pdf-kpi-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.cf-pdf-kpi {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+  min-width: 0;
+}
+
+.cf-pdf-kpi-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+}
+
+.cf-pdf-kpi-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.cf-pdf-kpi-sub {
+  font-size: 8px;
+  color: #94a3b8;
+}
+
+.cf-pdf-kpi-contract { border-top: 3px solid #6366f1; }
+.cf-pdf-kpi-terms { border-top: 3px solid #8b5cf6; }
+.cf-pdf-kpi-invoice { border-top: 3px solid #3b82f6; }
+.cf-pdf-kpi-received { border-top: 3px solid #10b981; }
+.cf-pdf-kpi-expense { border-top: 3px solid #f59e0b; }
+.cf-pdf-kpi-balance { border-top: 3px solid #ec4899; }
+
+.cf-pdf-kpi-arrow {
+  font-size: 16px;
+  font-weight: 700;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.cf-pdf-kpi-divider {
+  width: 2px;
+  height: 36px;
+  background: #cbd5e1;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+/* Body - 2 columns */
+.cf-pdf-body {
+  display: flex;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.cf-pdf-left {
+  flex: 0 0 42%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cf-pdf-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Sections */
+.cf-pdf-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cf-pdf-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.cf-pdf-st-income { border-left: 3px solid #3b82f6; }
+.cf-pdf-st-received { border-left: 3px solid #10b981; }
+.cf-pdf-st-expense { border-left: 3px solid #f59e0b; }
+.cf-pdf-st-chart { border-left: 3px solid #6366f1; }
+
+/* Tables in PDF */
+.cf-pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.cf-pdf-table th {
+  background: #f8fafc;
+  padding: 4px 6px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.cf-pdf-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.cf-pdf-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cf-pdf-row-done td {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.cf-pdf-empty {
+  padding: 8px 10px;
+  font-size: 9px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Chart */
+.cf-pdf-section-chart {
+  flex: 0 0 auto;
+}
+
+.cf-pdf-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100px;
+  padding: 8px 10px 4px;
+}
+
+.cf-pdf-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cf-pdf-chart-current {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 4px;
+}
+
+.cf-pdf-chart-bars {
+  display: flex;
+  gap: 1px;
+  align-items: flex-end;
+  height: 80px;
+  width: 100%;
+  justify-content: center;
+}
+
+.cf-pdf-chart-bar {
+  width: 40%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.2s;
+}
+
+.cf-pdf-bar-inc { background: #3b82f6; }
+.cf-pdf-bar-exp { background: #f59e0b; }
+
+.cf-pdf-chart-label {
+  font-size: 7px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.cf-pdf-chart-legend {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 4px 10px 6px;
+  font-size: 8px;
+  color: #64748b;
+}
+
+.cf-pdf-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cf-pdf-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.cf-pdf-dot-inc { background: #3b82f6; }
+.cf-pdf-dot-exp { background: #f59e0b; }
+
+/* Monthly Detail Table */
+.cf-pdf-section-monthly {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cf-pdf-monthly-scroll {
+  overflow-x: auto;
+  flex: 1;
+}
+
+.cf-pdf-monthly-table th,
+.cf-pdf-monthly-table td {
+  text-align: right;
+  padding: 3px 4px;
+  min-width: 38px;
+  font-size: 8px;
+}
+
+.cf-pdf-sticky-col {
+  position: sticky;
+  left: 0;
+  background: #f8fafc;
+  z-index: 1;
+  text-align: left !important;
+  font-weight: 700;
+  min-width: 70px !important;
+}
+
+.cf-pdf-current-col {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+.cf-pdf-row-income td { color: #3b82f6; }
+.cf-pdf-row-expense td { color: #f59e0b; }
+.cf-pdf-row-cum-inc td { color: #3b82f6; font-weight: 600; font-size: 8px; }
+.cf-pdf-row-cum-exp td { color: #f59e0b; font-weight: 600; font-size: 8px; }
+.cf-pdf-row-balance td { font-weight: 700; border-top: 1.5px solid #cbd5e1; font-size: 9px; }
+
+/* Flow Diagram */
+.cf-pdf-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cf-pdf-flow-box {
+  padding: 4px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.cf-pdf-flow-label {
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+}
+
+.cf-pdf-flow-value {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.cf-pdf-flow-arrow {
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.cf-pdf-flow-sep {
+  font-size: 18px;
+  color: #cbd5e1;
+  margin: 0 4px;
+}
+
+.cf-pdf-flow-contract { border-top: 2px solid #6366f1; }
+.cf-pdf-flow-terms { border-top: 2px solid #8b5cf6; }
+.cf-pdf-flow-inv { border-top: 2px solid #3b82f6; }
+.cf-pdf-flow-recv { border-top: 2px solid #10b981; }
+.cf-pdf-flow-purchase { border-top: 2px solid #f59e0b; }
+.cf-pdf-flow-exp { border-top: 2px solid #ef4444; }
+.cf-pdf-flow-paid { border-top: 2px solid #dc2626; }
+.cf-pdf-flow-net { border-width: 2px; }
+
 .budget-summary-section {
   display: flex;
   flex-direction: column;
