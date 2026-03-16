@@ -51,7 +51,7 @@ export default function ProjectList() {
     masterSchedule: [],
     scheduleSnapshots: [],
     paymentTerms: [] as { id: string; milestone: string; percentage: number; amountUSD: number; expectedDate: string; description: string }[],
-    cashFlowInvoices: [] as { id: string; paymentTermId: string; invoiceNo: string; invoiceDate: string; amountUSD: number; receivedDate: string; receivedAmount: number; notes: string }[],
+    cashFlowInvoices: [] as { id: string; paymentTermId: string; invoiceNo: string; invoiceDate: string; amountFormula: string; amountUSD: number; expectedDate: string; receivedDate: string; receivedAmount: number; notes: string }[],
     cashFlowExpenses: [] as { id: string; description: string; category: 'material' | 'engineering' | 'direct_cost' | 'contingency' | 'other'; amountUSD: number; expectedDate: string; actualDate: string; paid: boolean; notes: string }[],
   });
 
