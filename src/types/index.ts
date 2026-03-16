@@ -300,7 +300,9 @@ export interface CashFlowInvoice {
   paymentTermId: string;     // links to PaymentTerm
   invoiceNo: string;
   invoiceDate: string;       // invoice issued date
-  amountUSD: number;
+  amountFormula: string;     // formula string e.g. "100000 * 0.3" or plain number
+  amountUSD: number;         // computed amount
+  expectedDate: string;      // expected receipt date
   receivedDate: string;      // actual received date
   receivedAmount: number;    // actual received amount
   notes: string;
