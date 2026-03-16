@@ -171,7 +171,9 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
       cumActExp += m.actualExpense;
       return {
         ...m, cumExpInc, cumActInc, cumExpExp, cumActExp,
-        expectedBalance: cumExpInc - cumExpExp,
+        // 예상 잔액: (실수금 + 예상수금) - 예상지출 → 실제 받은 돈 + 앞으로 받을 돈 - 앞으로 나갈 돈
+        expectedBalance: (cumActInc + cumExpInc) - cumExpExp,
+        // 실 잔액: 실수금 - 실지출
         actualBalance: cumActInc - cumActExp,
       };
     });
