@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -177,6 +177,18 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
         scopeOfSupply: Array.isArray(pu.scopeOfSupply) ? (pu.scopeOfSupply as string[]) : (pu.scopeOfSupply ? [pu.scopeOfSupply as string] : ['']),
         notes: (pu.notes as string) || '',
         sortOrder: (pu.sortOrder as number) || 0,
+        purchasePaymentTerms: ((pu.purchasePaymentTerms as Record<string, unknown>[]) || []).map((pt: Record<string, unknown>) => ({
+          id: (pt.id as string) || uuidv4(),
+          label: (pt.label as string) || '',
+          percentage: (pt.percentage as number) || 0,
+          amount: (pt.amount as number) || 0,
+          paymentDueDays: (pt.paymentDueDays as number) || 30,
+          expectedInvoiceDate: (pt.expectedInvoiceDate as string) || '',
+          expectedPaymentDate: (pt.expectedPaymentDate as string) || '',
+          paid: (pt.paid as boolean) || false,
+          actualPaymentDate: (pt.actualPaymentDate as string) || '',
+          notes: (pt.notes as string) || '',
+        })),
       })),
     })),
   }));
