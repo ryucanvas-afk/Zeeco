@@ -73,6 +73,9 @@ export default function MindMap({ projects }: MindMapProps) {
       budgetSnapshots: [],
       masterSchedule: [],
       scheduleSnapshots: [],
+      paymentTerms: [],
+      cashFlowInvoices: [],
+      cashFlowExpenses: [],
     });
   };
 

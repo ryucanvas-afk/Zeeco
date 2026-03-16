@@ -50,6 +50,9 @@ export default function ProjectList() {
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [] as { id: string; milestone: string; percentage: number; amountUSD: number; expectedDate: string; description: string }[],
+    cashFlowInvoices: [] as { id: string; paymentTermId: string; invoiceNo: string; invoiceDate: string; amountUSD: number; receivedDate: string; receivedAmount: number; notes: string }[],
+    cashFlowExpenses: [] as { id: string; description: string; category: 'material' | 'engineering' | 'direct_cost' | 'contingency' | 'other'; amountUSD: number; expectedDate: string; actualDate: string; paid: boolean; notes: string }[],
   });
 
   const visibleProjects = showHidden ? projects : projects.filter(p => !p.hidden);
@@ -71,6 +74,9 @@ export default function ProjectList() {
       budgetSnapshots: [],
       masterSchedule: [],
       scheduleSnapshots: [],
+      paymentTerms: [],
+      cashFlowInvoices: [],
+      cashFlowExpenses: [],
     });
     setShowForm(false);
   };
