@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { Project } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
@@ -48,6 +48,9 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
     addPaymentTerm, updatePaymentTerm, deletePaymentTerm,
     addCashFlowInvoice, updateCashFlowInvoice, deleteCashFlowInvoice,
   } = useProjects();
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
   const paymentTerms = project.paymentTerms || [];
   const invoices = project.cashFlowInvoices || [];
@@ -171,7 +174,9 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
       cumActExp += m.actualExpense;
       return {
         ...m, cumExpInc, cumActInc, cumExpExp, cumActExp,
-        expectedBalance: cumExpInc - cumExpExp,
+        // 예상 잔액: (실수금 + 예상수금) - 예상지출 → 실제 받은 돈 + 앞으로 받을 돈 - 앞으로 나갈 돈
+        expectedBalance: (cumActInc + cumExpInc) - cumExpExp,
+        // 실 잔액: 실수금 - 실지출
         actualBalance: cumActInc - cumActExp,
       };
     });
@@ -231,16 +236,16 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
 
       {/* === 1. Payment Terms (계약 조건) === */}
       <div className="cf-section">
-        <div className="cf-section-header">
-          <h3>Payment Terms (계약 조건)</h3>
-          <div className="cf-section-actions">
+        <div className="cf-section-header" onClick={() => toggle('terms')}>
+          <h3>{collapsed.terms ? '▸' : '▾'} Payment Terms (계약 조건)</h3>
+          <div className="cf-section-actions" onClick={e => e.stopPropagation()}>
             {paymentTerms.length > 0 && totalTermsPct > 0 && (
               <button className="btn btn-sm btn-secondary" onClick={autoCalcTermAmounts}>금액 자동 계산</button>
             )}
             <button className="btn btn-sm btn-primary" onClick={handleAddTerm}>+ 추가</button>
           </div>
         </div>
-        <div className="cf-section-body">
+        {!collapsed.terms && <div className="cf-section-body">
           {paymentTerms.length > 0 ? (
             <table className="data-table cf-table">
               <thead>
@@ -273,18 +278,18 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
               </tbody>
             </table>
           ) : <p className="empty-message">계약 조건에 따른 Payment Terms를 추가하세요.</p>}
-        </div>
+        </div>}
       </div>
 
       {/* === 2. Invoice / 수금 === */}
       <div className="cf-section">
-        <div className="cf-section-header">
-          <h3>Invoice / 수금 ({invoices.length}건)</h3>
-          <div className="cf-section-actions">
+        <div className="cf-section-header" onClick={() => toggle('invoices')}>
+          <h3>{collapsed.invoices ? '▸' : '▾'} Invoice / 수금 ({invoices.length}건)</h3>
+          <div className="cf-section-actions" onClick={e => e.stopPropagation()}>
             <button className="btn btn-sm btn-primary" onClick={handleAddInvoice}>+ 추가</button>
           </div>
         </div>
-        <div className="cf-section-body">
+        {!collapsed.invoices && <div className="cf-section-body">
           {invoices.length > 0 ? (
             <table className="data-table cf-table">
               <thead>
@@ -342,15 +347,15 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
               </tbody>
             </table>
           ) : <p className="empty-message">Invoice를 추가하여 수금 일정을 관리하세요.</p>}
-        </div>
+        </div>}
       </div>
 
       {/* === 3. 지출 (구매 관리 연동) === */}
       <div className="cf-section">
-        <div className="cf-section-header">
-          <h3>지출 / Expenses - 구매 관리 연동 ({purchaseExpenses.length}건)</h3>
+        <div className="cf-section-header" onClick={() => toggle('expenses')}>
+          <h3>{collapsed.expenses ? '▸' : '▾'} 지출 / Expenses - 구매 관리 연동 ({purchaseExpenses.length}건)</h3>
         </div>
-        <div className="cf-section-body">
+        {!collapsed.expenses && <div className="cf-section-body">
           {purchaseExpenses.length > 0 ? (
             <div className="cf-monthly-scroll">
               <table className="data-table cf-table">
@@ -395,91 +400,107 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
           ) : (
             <p className="empty-message">구매 관리에서 발주 항목에 Payment Terms를 추가하면 자동으로 연동됩니다.</p>
           )}
-        </div>
+        </div>}
       </div>
 
-      {/* === 4. Monthly Cash Flow === */}
+      {/* === 4. Monthly Cash Flow (스케줄 형식) === */}
       {cumulativeData.length > 0 && (
         <div className="cf-section">
-          <div className="cf-section-header">
-            <h3>Monthly Cash Flow ({cumulativeData.length}개월)</h3>
+          <div className="cf-section-header" onClick={() => toggle('monthly')}>
+            <h3>{collapsed.monthly ? '▸' : '▾'} Monthly Cash Flow ({cumulativeData.length}개월)</h3>
           </div>
-          <div className="cf-section-body">
-            <div className="cf-monthly-scroll">
-              <table className="data-table cf-monthly-table">
-                <thead>
-                  <tr>
-                    <th className="cf-month-label-col" rowSpan={2}>구분</th>
-                    {cumulativeData.map(d => (
-                      <th key={d.key} className={`cf-month-th ${d.key === currentMonthKey ? 'cf-current-month' : ''}`}>
-                        {d.key.substring(2).replace('-', '.')}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* 수금 (Income) */}
-                  <tr className="cf-row-section-header"><td colSpan={cumulativeData.length + 1}>수금 (Income)</td></tr>
-                  <tr className="cf-row-expected-income">
-                    <td className="cf-row-label">예상 수금</td>
-                    {cumulativeData.map(d => <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}>{d.expectedIncome > 0 ? fmtUSD(d.expectedIncome) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-actual-income">
-                    <td className="cf-row-label">실 수금</td>
-                    {cumulativeData.map(d => <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}>{d.actualIncome > 0 ? fmtUSD(d.actualIncome) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-cum">
-                    <td className="cf-row-label">누적 예상</td>
-                    {cumulativeData.map(d => <td key={d.key} className={`cf-cum-cell ${d.key === currentMonthKey ? 'cf-current-month' : ''}`}>{d.cumExpInc > 0 ? fmtUSD(d.cumExpInc) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-cum">
-                    <td className="cf-row-label">누적 실수금</td>
-                    {cumulativeData.map(d => <td key={d.key} className={`cf-cum-cell ${d.key === currentMonthKey ? 'cf-current-month' : ''}`}>{d.cumActInc > 0 ? fmtUSD(d.cumActInc) : '-'}</td>)}
-                  </tr>
+          {!collapsed.monthly && <div className="cf-section-body">
+            <div className="cf-schedule">
+              {cumulativeData.map(d => {
+                // Find items for this month
+                const monthInvoicesExpected = invoices.filter(inv => inv.expectedDate && inv.expectedDate.substring(0, 7) === d.key && inv.amountUSD);
+                const monthInvoicesReceived = invoices.filter(inv => inv.receivedDate && inv.receivedDate.substring(0, 7) === d.key && inv.receivedAmount);
+                const monthExpensesExpected = purchaseExpenses.filter(e => e.expectedPaymentDate && e.expectedPaymentDate.substring(0, 7) === d.key);
+                const monthExpensesPaid = purchaseExpenses.filter(e => e.paid && e.actualPaymentDate && e.actualPaymentDate.substring(0, 7) === d.key);
 
-                  {/* 지출 (Expense) */}
-                  <tr className="cf-row-section-header"><td colSpan={cumulativeData.length + 1}>지출 (Expense)</td></tr>
-                  <tr className="cf-row-expected-expense">
-                    <td className="cf-row-label">예상 지출</td>
-                    {cumulativeData.map(d => <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}>{d.expectedExpense > 0 ? fmtUSD(d.expectedExpense) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-actual-expense">
-                    <td className="cf-row-label">실 지출</td>
-                    {cumulativeData.map(d => <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}>{d.actualExpense > 0 ? fmtUSD(d.actualExpense) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-cum">
-                    <td className="cf-row-label">누적 예상</td>
-                    {cumulativeData.map(d => <td key={d.key} className={`cf-cum-cell ${d.key === currentMonthKey ? 'cf-current-month' : ''}`}>{d.cumExpExp > 0 ? fmtUSD(d.cumExpExp) : '-'}</td>)}
-                  </tr>
-                  <tr className="cf-row-cum">
-                    <td className="cf-row-label">누적 실지출</td>
-                    {cumulativeData.map(d => <td key={d.key} className={`cf-cum-cell ${d.key === currentMonthKey ? 'cf-current-month' : ''}`}>{d.cumActExp > 0 ? fmtUSD(d.cumActExp) : '-'}</td>)}
-                  </tr>
+                const hasItems = monthInvoicesExpected.length > 0 || monthInvoicesReceived.length > 0 || monthExpensesExpected.length > 0 || monthExpensesPaid.length > 0;
+                if (!hasItems && d.expectedIncome === 0 && d.actualIncome === 0 && d.expectedExpense === 0 && d.actualExpense === 0) return null;
 
-                  {/* 잔액 (Balance) */}
-                  <tr className="cf-row-section-header"><td colSpan={cumulativeData.length + 1}>잔액 (Balance)</td></tr>
-                  <tr className="cf-row-balance">
-                    <td className="cf-row-label"><strong>예상 잔액</strong></td>
-                    {cumulativeData.map(d => (
-                      <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}
-                        style={{color: d.expectedBalance >= 0 ? '#10b981' : '#ef4444', fontWeight: 600}}>
-                        {d.cumExpInc > 0 || d.cumExpExp > 0 ? fmtUSD(d.expectedBalance) : '-'}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr className="cf-row-actual-balance">
-                    <td className="cf-row-label"><strong>실 잔액</strong></td>
-                    {cumulativeData.map(d => (
-                      <td key={d.key} className={d.key === currentMonthKey ? 'cf-current-month' : ''}
-                        style={{color: d.actualBalance >= 0 ? '#10b981' : '#ef4444', fontWeight: 700}}>
-                        {d.cumActInc > 0 || d.cumActExp > 0 ? fmtUSD(d.actualBalance) : '-'}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+                const isCurrent = d.key === currentMonthKey;
+                return (
+                  <div key={d.key} className={`cf-month-card ${isCurrent ? 'cf-month-current' : ''}`}>
+                    <div className="cf-month-card-header">
+                      <span className="cf-month-card-title">{d.key.substring(2).replace('-', '.')}</span>
+                      <div className="cf-month-card-summary">
+                        <span className="cf-month-in">+{fmtUSD(d.expectedIncome + d.actualIncome)}</span>
+                        <span className="cf-month-out">-{fmtUSD(d.expectedExpense + d.actualExpense)}</span>
+                        <span className="cf-month-bal" style={{color: d.expectedBalance >= 0 ? '#10b981' : '#ef4444'}}>
+                          잔액 {fmtUSD(d.expectedBalance)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="cf-month-card-body">
+                      {/* 수금 항목 */}
+                      {monthInvoicesExpected.length > 0 && (
+                        <div className="cf-month-group cf-month-group-income">
+                          <div className="cf-month-group-label">예상 수금</div>
+                          {monthInvoicesExpected.map(inv => {
+                            const term = paymentTerms.find(t => t.id === inv.paymentTermId);
+                            return (
+                              <div key={inv.id} className="cf-month-item cf-item-income">
+                                <span className="cf-item-name">{term ? term.milestone : inv.invoiceNo || 'Invoice'}</span>
+                                <span className="cf-item-amount">{fmtUSD(inv.amountUSD)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {monthInvoicesReceived.length > 0 && (
+                        <div className="cf-month-group cf-month-group-received">
+                          <div className="cf-month-group-label">실 수금</div>
+                          {monthInvoicesReceived.map(inv => {
+                            const term = paymentTerms.find(t => t.id === inv.paymentTermId);
+                            return (
+                              <div key={`r-${inv.id}`} className="cf-month-item cf-item-received">
+                                <span className="cf-item-name">{term ? term.milestone : inv.invoiceNo || 'Invoice'}</span>
+                                <span className="cf-item-amount">{fmtUSD(inv.receivedAmount)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* 지출 항목 */}
+                      {monthExpensesExpected.length > 0 && (
+                        <div className="cf-month-group cf-month-group-expense">
+                          <div className="cf-month-group-label">예상 지출</div>
+                          {monthExpensesExpected.map((e, idx) => (
+                            <div key={`e-${e.purchaseId}-${idx}`} className="cf-month-item cf-item-expense">
+                              <span className="cf-item-name">{e.partName} ({e.termLabel})</span>
+                              <span className="cf-item-amount">-{fmtUSD(e.amountUSD)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {monthExpensesPaid.length > 0 && (
+                        <div className="cf-month-group cf-month-group-paid">
+                          <div className="cf-month-group-label">실 지출</div>
+                          {monthExpensesPaid.map((e, idx) => (
+                            <div key={`p-${e.purchaseId}-${idx}`} className="cf-month-item cf-item-paid">
+                              <span className="cf-item-name">{e.partName} ({e.termLabel})</span>
+                              <span className="cf-item-amount">-{fmtUSD(e.amountUSD)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* 누적 */}
+                    <div className="cf-month-card-footer">
+                      <span>누적수금 {fmtUSD(d.cumActInc + d.cumExpInc)}</span>
+                      <span>누적지출 {fmtUSD(d.cumExpExp)}</span>
+                      <span style={{color: d.expectedBalance >= 0 ? '#10b981' : '#ef4444', fontWeight: 700}}>
+                        예상잔액 {fmtUSD(d.expectedBalance)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </div>}
         </div>
       )}
     </div>
