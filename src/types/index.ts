@@ -121,6 +121,19 @@ export interface Schedule {
   notes: string;
 }
 
+export interface PurchasePaymentTerm {
+  id: string;
+  label: string;            // e.g. "선급금", "중도금", "잔금"
+  percentage: number;        // e.g. 20
+  amount: number;            // auto-calculated from orderAmount * percentage/100
+  paymentDueDays: number;    // payment due days after invoice (e.g. 30)
+  expectedInvoiceDate: string; // expected invoice date
+  expectedPaymentDate: string; // auto-calculated: invoiceDate + dueDays
+  paid: boolean;
+  actualPaymentDate: string;
+  notes: string;
+}
+
 export interface Purchase {
   id: string;
   itemId: string;
@@ -142,6 +155,7 @@ export interface Purchase {
   scopeOfSupply: string[];
   notes: string;
   sortOrder: number;
+  purchasePaymentTerms: PurchasePaymentTerm[];
 }
 
 export interface InspectionEntry {

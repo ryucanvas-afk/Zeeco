@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
-import type { Project, Purchase, PurchaseStatus } from '../types';
+import type { Project, Purchase, PurchaseStatus, PurchasePaymentTerm } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
 
@@ -27,6 +28,7 @@ const emptyPurchase: Omit<Purchase, 'id' | 'itemId'> = {
   scopeOfSupply: [''],
   notes: '',
   sortOrder: 0,
+  purchasePaymentTerms: [],
 };
 
 const purchaseStatusOptions = [
@@ -492,7 +494,7 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                               orderDate: pd.orderDate, expectedDelivery: pd.expectedDelivery, actualDelivery: pd.actualDelivery,
                               status: pd.status as PurchaseStatus, orderAmount: pd.orderAmount, vat: pd.vat,
                               currency: pd.currency, termsOfPayment: pd.termsOfPayment, scopeOfSupply: pd.scopeOfSupply,
-                              notes: pd.notes, sortOrder: pd.sortOrder,
+                              notes: pd.notes, sortOrder: pd.sortOrder, purchasePaymentTerms: pd.purchasePaymentTerms || [],
                             });
                             setSelectedPurchaseId(null);
                           }
@@ -534,6 +536,141 @@ export default function PurchaseTab({ project }: PurchaseTabProps) {
                     <div className="pd-field pd-field-full"><label>Terms of Payment</label>
                       <EditableCell value={purchase.termsOfPayment || ''} onSave={v => handleInlineUpdate(purchase.id, purchase.parentItemId, 'termsOfPayment', v)} placeholder="-" />
                     </div>
+
+                    {/* Payment Terms (Cash Flow 연동) */}
+                    <div className="pd-field pd-field-full pd-payment-terms-section">
+                      <div className="pd-pt-header">
+                        <label>Payment Terms (Cash Flow 연동)</label>
+                        <button className="btn btn-sm btn-secondary" onClick={() => {
+                          const terms = purchase.purchasePaymentTerms || [];
+                          const newTerm: PurchasePaymentTerm = {
+                            id: uuidv4(),
+                            label: terms.length === 0 ? '선급금' : terms.length === 1 ? '중도금' : '잔금',
+                            percentage: 0,
+                            amount: 0,
+                            paymentDueDays: 30,
+                            expectedInvoiceDate: '',
+                            expectedPaymentDate: '',
+                            paid: false,
+                            actualPaymentDate: '',
+                            notes: '',
+                          };
+                          updatePurchase(project.id, purchase.parentItemId, purchase.id, {
+                            purchasePaymentTerms: [...terms, newTerm],
+                          });
+                        }}>+ 조건 추가</button>
+                      </div>
+                      {(purchase.purchasePaymentTerms || []).length > 0 && (
+                        <div className="pd-pt-table-wrap">
+                          <table className="pd-pt-table">
+                            <thead>
+                              <tr>
+                                <th>구분</th>
+                                <th style={{width: 70}}>비율(%)</th>
+                                <th style={{width: 100}}>금액</th>
+                                <th style={{width: 70}}>지급기한(일)</th>
+                                <th style={{width: 110}}>예정 Invoice일</th>
+                                <th style={{width: 110}}>예정 지급일</th>
+                                <th style={{width: 50}}>집행</th>
+                                <th style={{width: 110}}>실 지급일</th>
+                                <th style={{width: 30}}></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(purchase.purchasePaymentTerms || []).map(pt => {
+                                const calcAmount = Math.round((purchase.orderAmount || 0) * pt.percentage / 100);
+                                // Auto-calc expected payment date
+                                let autoPaymentDate = '';
+                                if (pt.expectedInvoiceDate && pt.paymentDueDays > 0) {
+                                  const d = new Date(pt.expectedInvoiceDate);
+                                  d.setDate(d.getDate() + pt.paymentDueDays);
+                                  autoPaymentDate = d.toISOString().split('T')[0];
+                                }
+                                return (
+                                  <tr key={pt.id} className={pt.paid ? 'pd-pt-paid' : ''}>
+                                    <td>
+                                      <EditableCell value={pt.label} onSave={v => {
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, label: v } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} placeholder="선급금" />
+                                    </td>
+                                    <td>
+                                      <EditableCell value={String(pt.percentage)} type="number" onSave={v => {
+                                        const pct = Number(v);
+                                        const amt = Math.round((purchase.orderAmount || 0) * pct / 100);
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, percentage: pct, amount: amt } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} />
+                                    </td>
+                                    <td className="pd-pt-amount">
+                                      {formatNumber(calcAmount)} {purchase.currency}
+                                    </td>
+                                    <td>
+                                      <EditableCell value={String(pt.paymentDueDays)} type="number" onSave={v => {
+                                        const days = Number(v);
+                                        let epd = '';
+                                        if (pt.expectedInvoiceDate && days > 0) {
+                                          const d = new Date(pt.expectedInvoiceDate);
+                                          d.setDate(d.getDate() + days);
+                                          epd = d.toISOString().split('T')[0];
+                                        }
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, paymentDueDays: days, expectedPaymentDate: epd } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} />
+                                    </td>
+                                    <td>
+                                      <EditableCell value={pt.expectedInvoiceDate} type="date" onSave={v => {
+                                        let epd = '';
+                                        if (v && pt.paymentDueDays > 0) {
+                                          const d = new Date(v);
+                                          d.setDate(d.getDate() + pt.paymentDueDays);
+                                          epd = d.toISOString().split('T')[0];
+                                        }
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, expectedInvoiceDate: v, expectedPaymentDate: epd } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} />
+                                    </td>
+                                    <td className="pd-pt-auto-date">
+                                      {autoPaymentDate || pt.expectedPaymentDate || '-'}
+                                    </td>
+                                    <td style={{textAlign:'center'}}>
+                                      <input type="checkbox" checked={pt.paid} onChange={e => {
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, paid: e.target.checked } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} />
+                                    </td>
+                                    <td>
+                                      <EditableCell value={pt.actualPaymentDate} type="date" onSave={v => {
+                                        const terms = (purchase.purchasePaymentTerms || []).map(t => t.id === pt.id ? { ...t, actualPaymentDate: v } : t);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }} />
+                                    </td>
+                                    <td>
+                                      <button className="btn-icon btn-danger" onClick={() => {
+                                        const terms = (purchase.purchasePaymentTerms || []).filter(t => t.id !== pt.id);
+                                        updatePurchase(project.id, purchase.parentItemId, purchase.id, { purchasePaymentTerms: terms });
+                                      }}>✕</button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              <tr className="pd-pt-total">
+                                <td><strong>합계</strong></td>
+                                <td><strong>{(purchase.purchasePaymentTerms || []).reduce((s, t) => s + t.percentage, 0)}%</strong></td>
+                                <td><strong>{formatNumber((purchase.purchasePaymentTerms || []).reduce((s, t) => s + Math.round((purchase.orderAmount || 0) * t.percentage / 100), 0))} {purchase.currency}</strong></td>
+                                <td colSpan={4}></td>
+                                <td><strong>{formatNumber((purchase.purchasePaymentTerms || []).filter(t => t.paid).reduce((s, t) => s + Math.round((purchase.orderAmount || 0) * t.percentage / 100), 0))}</strong></td>
+                                <td></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {(purchase.purchasePaymentTerms || []).length === 0 && (
+                        <p className="pd-pt-empty">Payment Terms를 추가하여 Cash Flow에 연동하세요.</p>
+                      )}
+                    </div>
+
                     <div className="pd-field pd-field-full"><label>Scope of Supply</label>
                       <div className="scope-list">
                         {(Array.isArray(purchase.scopeOfSupply) ? purchase.scopeOfSupply : [purchase.scopeOfSupply || '']).map((item, idx) => (
