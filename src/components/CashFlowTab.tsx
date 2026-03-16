@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Project } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
+import CashFlowPdfPreview from './CashFlowPdfPreview';
 
 interface CashFlowTabProps {
   project: Project;
@@ -51,6 +52,7 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  const [showPdf, setShowPdf] = useState(false);
 
   const paymentTerms = project.paymentTerms || [];
   const invoices = project.cashFlowInvoices || [];
@@ -206,8 +208,13 @@ export default function CashFlowTab({ project }: CashFlowTabProps) {
 
   return (
     <div className="cashflow-tab">
+      {showPdf && <CashFlowPdfPreview project={project} onClose={() => setShowPdf(false)} />}
       {/* === Summary Dashboard === */}
-      <div className="cf-dashboard">
+      <div className="cf-dashboard" style={{ position: 'relative' }}>
+        <button className="btn btn-sm btn-primary" onClick={() => setShowPdf(true)}
+          style={{ position: 'absolute', top: -32, right: 0, fontSize: 11 }}>
+          PDF Report
+        </button>
         <div className="cf-dash-card cf-dash-contract">
           <div className="cf-dash-label">계약 금액</div>
           <div className="cf-dash-value">{fmtUSD(contractUSD)}</div>
