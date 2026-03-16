@@ -9,14 +9,7 @@ interface CashFlowPdfPreviewProps {
 }
 
 function fmtUSD(n: number): string {
-  if (n === 0) return '-';
-  return '$' + Math.round(n).toLocaleString();
-}
-
-function fmtUSDCompact(n: number): string {
-  if (n === 0) return '-';
-  if (Math.abs(n) >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
-  if (Math.abs(n) >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K';
+  if (!n || n === 0) return '-';
   return '$' + Math.round(n).toLocaleString();
 }
 
@@ -26,8 +19,15 @@ function toUSD(amount: number, currency: string, exchangeRate: number, eurRate: 
   return amount / exchangeRate;
 }
 
+const PIE_COLORS = [
+  '#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+  '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#64748b',
+  '#a855f7', '#06b6d4',
+];
+
 export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPreviewProps) {
-  const printRef = useRef<HTMLDivElement>(null);
+  const page1Ref = useRef<HTMLDivElement>(null);
+  const page2Ref = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
   const exchangeRate = project.exchangeRate || 1350;
@@ -42,12 +42,13 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
   const totalInvoicedUSD = invoices.reduce((s, inv) => s + (inv.amountUSD || 0), 0);
   const totalReceivedUSD = invoices.reduce((s, inv) => s + (inv.receivedAmount || 0), 0);
 
-  // Gather purchase expenses
+  // Gather purchase expenses with full detail
   const purchaseExpenses = useMemo(() => {
     const result: {
       itemName: string; partName: string; supplier: string;
-      termLabel: string; percentage: number; amountUSD: number;
+      termLabel: string; percentage: number; amount: number; currency: string; amountUSD: number;
       expectedPaymentDate: string; actualPaymentDate: string; paid: boolean;
+      purchaseId: string;
     }[] = [];
     for (const item of project.items || []) {
       for (const purchase of item.purchases || []) {
@@ -62,8 +63,10 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
           result.push({
             itemName: item.name, partName: purchase.partName, supplier: purchase.supplier,
             termLabel: pt.label, percentage: pt.percentage,
+            amount: amt, currency: purchase.currency || 'KRW',
             amountUSD: toUSD(amt, purchase.currency || 'KRW', exchangeRate, eurRate),
             expectedPaymentDate: epd, actualPaymentDate: pt.actualPaymentDate, paid: pt.paid,
+            purchaseId: purchase.id,
           });
         }
       }
@@ -74,7 +77,17 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
   const totalExpenseUSD = purchaseExpenses.reduce((s, e) => s + e.amountUSD, 0);
   const totalPaidUSD = purchaseExpenses.filter(e => e.paid).reduce((s, e) => s + e.amountUSD, 0);
 
-  // Monthly data - ALL months shown
+  // Group expenses by supplier for pie chart
+  const expenseBySupplier = useMemo(() => {
+    const map = new Map<string, number>();
+    purchaseExpenses.forEach(e => {
+      const key = e.supplier || e.partName || 'Other';
+      map.set(key, (map.get(key) || 0) + e.amountUSD);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [purchaseExpenses]);
+
+  // Monthly data - ALL months from first to last date
   const monthlyData = useMemo(() => {
     const allDates: string[] = [];
     invoices.forEach(inv => {
@@ -91,12 +104,17 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
 
     allDates.sort();
     const startDate = new Date(allDates[0]);
+    const endDate = new Date(allDates[allDates.length - 1]);
+    const monthCount = Math.max(
+      (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth()) + 2,
+      12
+    );
     const months: { key: string; label: string; expectedIncome: number; actualIncome: number; expectedExpense: number; actualExpense: number }[] = [];
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < monthCount; i++) {
       const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       months.push({
         key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-        label: `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`,
         expectedIncome: 0, actualIncome: 0, expectedExpense: 0, actualExpense: 0,
       });
     }
@@ -130,59 +148,80 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
     return months;
   }, [invoices, purchaseExpenses, project.contractDate, paymentTerms]);
 
-  // Cumulative
+  // Cumulative with expectedBalance matching CashFlowTab
   const cumulativeData = useMemo(() => {
-    let cumInc = 0, cumExp = 0;
+    let cumExpInc = 0, cumActInc = 0, cumExpExp = 0;
     return monthlyData.map(m => {
-      cumInc += m.expectedIncome + m.actualIncome;
-      cumExp += m.expectedExpense + m.actualExpense;
-      return { ...m, cumInc, cumExp, balance: cumInc - cumExp };
+      cumExpInc += m.expectedIncome;
+      cumActInc += m.actualIncome;
+      cumExpExp += m.expectedExpense;
+      return {
+        ...m, cumExpInc, cumActInc, cumExpExp,
+        expectedBalance: (cumActInc + cumExpInc) - cumExpExp,
+      };
     });
   }, [monthlyData]);
-
-  // Group expenses by supplier for summary
-  const expenseBySupplier = useMemo(() => {
-    const map = new Map<string, number>();
-    purchaseExpenses.forEach(e => {
-      const key = e.supplier || e.partName || 'Other';
-      map.set(key, (map.get(key) || 0) + e.amountUSD);
-    });
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [purchaseExpenses]);
 
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+  // SVG Pie chart
+  const pieSlices = useMemo(() => {
+    if (totalExpenseUSD === 0 || expenseBySupplier.length === 0) return [];
+    let cumAngle = -90;
+    return expenseBySupplier.map(([name, amt], idx) => {
+      const pct = amt / totalExpenseUSD;
+      const angle = pct * 360;
+      const startAngle = cumAngle;
+      const endAngle = cumAngle + angle;
+      cumAngle = endAngle;
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+      const r = 65;
+      const cx = 75, cy = 75;
+      const x1 = cx + r * Math.cos(startRad);
+      const y1 = cy + r * Math.sin(startRad);
+      const x2 = cx + r * Math.cos(endRad);
+      const y2 = cy + r * Math.sin(endRad);
+      const largeArc = angle > 180 ? 1 : 0;
+      const path = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
+      return { path, color: PIE_COLORS[idx % PIE_COLORS.length], name, amt, pct };
+    });
+  }, [expenseBySupplier, totalExpenseUSD]);
+
   const handleExport = async () => {
-    if (!printRef.current) return;
+    if (!page1Ref.current || !page2Ref.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 5;
-      const usableW = pageW - margin * 2;
-      const usableH = pageH - margin * 2;
-      const imgRatio = canvas.width / canvas.height;
-      const pageRatio = usableW / usableH;
-      let drawW: number, drawH: number;
-      if (imgRatio > pageRatio) {
-        drawW = usableW;
-        drawH = usableW / imgRatio;
-      } else {
-        drawH = usableH;
-        drawW = usableH * imgRatio;
-      }
-      const offsetX = margin + (usableW - drawW) / 2;
-      const offsetY = margin + (usableH - drawH) / 2;
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
+      const margin = 4;
+
+      const addPageImage = async (el: HTMLDivElement) => {
+        const canvas = await html2canvas(el, {
+          scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const usableW = pageW - margin * 2;
+        const usableH = pageH - margin * 2;
+        const imgRatio = canvas.width / canvas.height;
+        const pageRatio = usableW / usableH;
+        let drawW: number, drawH: number;
+        if (imgRatio > pageRatio) {
+          drawW = usableW; drawH = usableW / imgRatio;
+        } else {
+          drawH = usableH; drawW = usableH * imgRatio;
+        }
+        const offsetX = margin + (usableW - drawW) / 2;
+        const offsetY = margin + (usableH - drawH) / 2;
+        pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
+      };
+
+      await addPageImage(page1Ref.current);
+      pdf.addPage('a4', 'landscape');
+      await addPageImage(page2Ref.current);
+
       pdf.save(`${project.name || 'Project'}_CashFlow_Report.pdf`);
     } catch (err) {
       console.error('PDF export error:', err);
@@ -192,20 +231,20 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
     }
   };
 
-  // Find max value for chart scaling
-  const maxVal = useMemo(() => {
-    let max = 0;
-    cumulativeData.forEach(d => {
-      max = Math.max(max, Math.abs(d.cumInc), Math.abs(d.cumExp), Math.abs(d.balance));
-    });
-    return max || 1;
-  }, [cumulativeData]);
+  // Get monthly detail items (invoices & expenses per month)
+  const getMonthItems = (monthKey: string) => {
+    const incExpected = invoices.filter(inv => inv.expectedDate && inv.expectedDate.substring(0, 7) === monthKey && inv.amountUSD);
+    const incReceived = invoices.filter(inv => inv.receivedDate && inv.receivedDate.substring(0, 7) === monthKey && inv.receivedAmount);
+    const expExpected = purchaseExpenses.filter(e => e.expectedPaymentDate && e.expectedPaymentDate.substring(0, 7) === monthKey);
+    const expPaid = purchaseExpenses.filter(e => e.paid && e.actualPaymentDate && e.actualPaymentDate.substring(0, 7) === monthKey);
+    return { incExpected, incReceived, expExpected, expPaid };
+  };
 
   return (
     <div className="cf-pdf-overlay">
       <div className="cf-pdf-container">
         <div className="cf-pdf-toolbar">
-          <h3>Cash Flow Report - PDF Preview</h3>
+          <h3>Cash Flow Report - PDF Preview (2 Pages)</h3>
           <div className="cf-pdf-toolbar-actions">
             <button className="btn btn-primary" onClick={handleExport} disabled={exporting}>
               {exporting ? 'Exporting...' : 'PDF Download'}
@@ -215,8 +254,8 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
         </div>
 
         <div className="cf-pdf-scroll">
-          {/* === PDF Content (A4 Landscape) === */}
-          <div ref={printRef} className="cf-pdf-page">
+          {/* ========== PAGE 1: Summary ========== */}
+          <div ref={page1Ref} className="cf-pdf-page">
             {/* Header */}
             <div className="cf-pdf-header">
               <div className="cf-pdf-header-left">
@@ -233,7 +272,7 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
             {/* KPI Dashboard */}
             <div className="cf-pdf-kpi-row">
               <div className="cf-pdf-kpi cf-pdf-kpi-contract">
-                <div className="cf-pdf-kpi-label">Contract Amount</div>
+                <div className="cf-pdf-kpi-label">Contract</div>
                 <div className="cf-pdf-kpi-value">{fmtUSD(contractUSD)}</div>
               </div>
               <div className="cf-pdf-kpi-arrow">→</div>
@@ -255,7 +294,7 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
               </div>
               <div className="cf-pdf-kpi-divider"></div>
               <div className="cf-pdf-kpi cf-pdf-kpi-expense">
-                <div className="cf-pdf-kpi-label">Total Expense</div>
+                <div className="cf-pdf-kpi-label">Expense</div>
                 <div className="cf-pdf-kpi-value">{fmtUSD(totalExpenseUSD)}</div>
                 <div className="cf-pdf-kpi-sub">Paid: {fmtUSD(totalPaidUSD)}</div>
               </div>
@@ -268,22 +307,17 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
               </div>
             </div>
 
-            {/* Main content: 2 columns */}
+            {/* Body: 2 columns */}
             <div className="cf-pdf-body">
               {/* Left: Payment Terms + Invoice */}
               <div className="cf-pdf-left">
-                {/* Payment Terms */}
+                {/* 1. Payment Terms */}
                 <div className="cf-pdf-section">
-                  <div className="cf-pdf-section-title cf-pdf-st-income">Payment Terms (계약 조건)</div>
+                  <div className="cf-pdf-section-title cf-pdf-st-income">1. Payment Terms (계약 조건) - 계약금액: {fmtUSD(contractUSD)}</div>
                   {paymentTerms.length > 0 ? (
                     <table className="cf-pdf-table">
                       <thead>
-                        <tr>
-                          <th>Milestone</th>
-                          <th>%</th>
-                          <th>Amount (USD)</th>
-                          <th>Expected Date</th>
-                        </tr>
+                        <tr><th>Milestone</th><th>%</th><th>Amount (USD)</th><th>Expected Date</th></tr>
                       </thead>
                       <tbody>
                         {paymentTerms.map(t => (
@@ -294,24 +328,24 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
                             <td style={{ textAlign: 'center' }}>{t.expectedDate || '-'}</td>
                           </tr>
                         ))}
+                        <tr className="cf-pdf-total-row">
+                          <td><strong>합계</strong></td>
+                          <td style={{ textAlign: 'center' }}><strong>{paymentTerms.reduce((s, t) => s + (t.percentage || 0), 0)}%</strong></td>
+                          <td style={{ textAlign: 'right' }}><strong>{fmtUSD(totalTermsUSD)}</strong></td>
+                          <td></td>
+                        </tr>
                       </tbody>
                     </table>
                   ) : <div className="cf-pdf-empty">No payment terms</div>}
                 </div>
 
-                {/* Invoice Summary */}
+                {/* 2. Invoice / 수금 */}
                 <div className="cf-pdf-section">
-                  <div className="cf-pdf-section-title cf-pdf-st-received">Invoice / 수금</div>
+                  <div className="cf-pdf-section-title cf-pdf-st-received">2. Invoice / 수금 현황</div>
                   {invoices.length > 0 ? (
                     <table className="cf-pdf-table">
                       <thead>
-                        <tr>
-                          <th>Invoice</th>
-                          <th>Amount</th>
-                          <th>Expected</th>
-                          <th>Received</th>
-                          <th>Status</th>
-                        </tr>
+                        <tr><th>Invoice</th><th>Amount</th><th>Expected</th><th>Received</th><th>Status</th></tr>
                       </thead>
                       <tbody>
                         {invoices.map(inv => {
@@ -326,159 +360,108 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
                             </tr>
                           );
                         })}
+                        <tr className="cf-pdf-total-row">
+                          <td><strong>합계</strong></td>
+                          <td style={{ textAlign: 'right' }}><strong>{fmtUSD(totalInvoicedUSD)}</strong></td>
+                          <td></td>
+                          <td style={{ textAlign: 'right' }}><strong>{fmtUSD(totalReceivedUSD)}</strong></td>
+                          <td></td>
+                        </tr>
                       </tbody>
                     </table>
                   ) : <div className="cf-pdf-empty">No invoices</div>}
                 </div>
-
-                {/* Expense by Supplier */}
-                <div className="cf-pdf-section">
-                  <div className="cf-pdf-section-title cf-pdf-st-expense">Expense Summary (구매 연동)</div>
-                  {expenseBySupplier.length > 0 ? (
-                    <table className="cf-pdf-table">
-                      <thead>
-                        <tr>
-                          <th>Supplier / Item</th>
-                          <th>Amount (USD)</th>
-                          <th>Share</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {expenseBySupplier.slice(0, 8).map(([name, amt], idx) => (
-                          <tr key={idx}>
-                            <td>{name}</td>
-                            <td style={{ textAlign: 'right' }}>{fmtUSD(amt)}</td>
-                            <td style={{ textAlign: 'center' }}>{totalExpenseUSD ? (amt / totalExpenseUSD * 100).toFixed(1) + '%' : '-'}</td>
-                          </tr>
-                        ))}
-                        {expenseBySupplier.length > 8 && (
-                          <tr>
-                            <td>Others ({expenseBySupplier.length - 8})</td>
-                            <td style={{ textAlign: 'right' }}>{fmtUSD(expenseBySupplier.slice(8).reduce((s, e) => s + e[1], 0))}</td>
-                            <td></td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  ) : <div className="cf-pdf-empty">No expenses</div>}
-                </div>
               </div>
 
-              {/* Right: Monthly Cash Flow Chart + Table */}
+              {/* Right: Expense with Pie */}
               <div className="cf-pdf-right">
-                {/* Visual Bar Chart */}
-                {cumulativeData.length > 0 && (
-                  <div className="cf-pdf-section cf-pdf-section-chart">
-                    <div className="cf-pdf-section-title cf-pdf-st-chart">Monthly Cash Flow Trend (전 월 표시)</div>
-                    <div className="cf-pdf-chart">
-                      {cumulativeData.map(d => {
-                        const incH = maxVal > 0 ? (d.cumInc / maxVal) * 100 : 0;
-                        const expH = maxVal > 0 ? (d.cumExp / maxVal) * 100 : 0;
-                        const isCurrent = d.key === currentMonthKey;
-                        return (
-                          <div key={d.key} className={`cf-pdf-chart-col ${isCurrent ? 'cf-pdf-chart-current' : ''}`}>
-                            <div className="cf-pdf-chart-bars">
-                              <div className="cf-pdf-chart-bar cf-pdf-bar-inc" style={{ height: `${incH}%` }}></div>
-                              <div className="cf-pdf-chart-bar cf-pdf-bar-exp" style={{ height: `${expH}%` }}></div>
-                            </div>
-                            <div className="cf-pdf-chart-label">{d.label.slice(3)}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="cf-pdf-chart-legend">
-                      <span className="cf-pdf-legend-item"><span className="cf-pdf-legend-dot cf-pdf-dot-inc"></span>Cumulative Income</span>
-                      <span className="cf-pdf-legend-item"><span className="cf-pdf-legend-dot cf-pdf-dot-exp"></span>Cumulative Expense</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Monthly Detail Table - ALL months */}
-                {cumulativeData.length > 0 && (
-                  <div className="cf-pdf-section cf-pdf-section-monthly">
-                    <div className="cf-pdf-section-title cf-pdf-st-chart">Monthly Detail</div>
-                    <div className="cf-pdf-monthly-scroll">
-                      <table className="cf-pdf-table cf-pdf-monthly-table">
+                <div className="cf-pdf-section">
+                  <div className="cf-pdf-section-title cf-pdf-st-expense">3. Expense Summary (구매 연동) - 전체 계약 대비 {contractUSD > 0 ? (totalExpenseUSD / contractUSD * 100).toFixed(1) : 0}%</div>
+                  <div className="cf-pdf-expense-row">
+                    {/* Pie Chart */}
+                    {pieSlices.length > 0 && (
+                      <div className="cf-pdf-pie-wrap">
+                        <svg viewBox="0 0 150 150" className="cf-pdf-pie-svg">
+                          {pieSlices.map((s, i) => (
+                            <path key={i} d={s.path} fill={s.color} stroke="#fff" strokeWidth="1.5" />
+                          ))}
+                        </svg>
+                      </div>
+                    )}
+                    {/* Table */}
+                    <div className="cf-pdf-expense-detail">
+                      <table className="cf-pdf-table">
                         <thead>
-                          <tr>
-                            <th className="cf-pdf-sticky-col">Month</th>
-                            {cumulativeData.map(d => (
-                              <th key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}>
-                                {d.label}
-                              </th>
-                            ))}
-                          </tr>
+                          <tr><th></th><th>Supplier</th><th>Amount (USD)</th><th>Share</th></tr>
                         </thead>
                         <tbody>
-                          <tr className="cf-pdf-row-income">
-                            <td className="cf-pdf-sticky-col">Income</td>
-                            {cumulativeData.map(d => (
-                              <td key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}>
-                                {d.expectedIncome + d.actualIncome > 0 ? fmtUSDCompact(d.expectedIncome + d.actualIncome) : '-'}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr className="cf-pdf-row-expense">
-                            <td className="cf-pdf-sticky-col">Expense</td>
-                            {cumulativeData.map(d => (
-                              <td key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}>
-                                {d.expectedExpense + d.actualExpense > 0 ? fmtUSDCompact(d.expectedExpense + d.actualExpense) : '-'}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr className="cf-pdf-row-cum-inc">
-                            <td className="cf-pdf-sticky-col">Cum. Income</td>
-                            {cumulativeData.map(d => (
-                              <td key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}>
-                                {fmtUSDCompact(d.cumInc)}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr className="cf-pdf-row-cum-exp">
-                            <td className="cf-pdf-sticky-col">Cum. Expense</td>
-                            {cumulativeData.map(d => (
-                              <td key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}>
-                                {fmtUSDCompact(d.cumExp)}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr className="cf-pdf-row-balance">
-                            <td className="cf-pdf-sticky-col">Balance</td>
-                            {cumulativeData.map(d => (
-                              <td key={d.key} className={d.key === currentMonthKey ? 'cf-pdf-current-col' : ''}
-                                style={{ color: d.balance >= 0 ? '#10b981' : '#ef4444' }}>
-                                {fmtUSDCompact(d.balance)}
-                              </td>
-                            ))}
+                          {expenseBySupplier.map(([name, amt], idx) => (
+                            <tr key={idx}>
+                              <td><span className="cf-pdf-pie-dot" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}></span></td>
+                              <td>{name}</td>
+                              <td style={{ textAlign: 'right' }}>{fmtUSD(amt)}</td>
+                              <td style={{ textAlign: 'center' }}>{(amt / totalExpenseUSD * 100).toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                          <tr className="cf-pdf-total-row">
+                            <td></td>
+                            <td><strong>Total</strong></td>
+                            <td style={{ textAlign: 'right' }}><strong>{fmtUSD(totalExpenseUSD)}</strong></td>
+                            <td style={{ textAlign: 'center' }}><strong>100%</strong></td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
                   </div>
-                )}
+                </div>
+
+                {/* Purchase Detail Table */}
+                <div className="cf-pdf-section">
+                  <div className="cf-pdf-section-title cf-pdf-st-expense">각 발주 품목 Payment Terms</div>
+                  {purchaseExpenses.length > 0 ? (
+                    <table className="cf-pdf-table">
+                      <thead>
+                        <tr><th>품목</th><th>공급업체</th><th>구분</th><th>비율</th><th>금액 (USD)</th><th>예정 지급일</th><th>집행</th></tr>
+                      </thead>
+                      <tbody>
+                        {purchaseExpenses.map((e, idx) => (
+                          <tr key={idx} className={e.paid ? 'cf-pdf-row-done' : ''}>
+                            <td>{e.partName}</td>
+                            <td>{e.supplier}</td>
+                            <td>{e.termLabel}</td>
+                            <td style={{ textAlign: 'center' }}>{e.percentage}%</td>
+                            <td style={{ textAlign: 'right' }}>{fmtUSD(e.amountUSD)}</td>
+                            <td style={{ textAlign: 'center' }}>{e.expectedPaymentDate || '-'}</td>
+                            <td style={{ textAlign: 'center' }}>{e.paid ? 'Done' : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div className="cf-pdf-empty">No purchase expenses</div>}
+                </div>
               </div>
             </div>
 
-            {/* Flow Diagram - shows relationship */}
+            {/* Flow Diagram */}
             <div className="cf-pdf-flow">
               <div className="cf-pdf-flow-box cf-pdf-flow-contract">
                 <div className="cf-pdf-flow-label">Contract</div>
-                <div className="cf-pdf-flow-value">{fmtUSDCompact(contractUSD)}</div>
+                <div className="cf-pdf-flow-value">{fmtUSD(contractUSD)}</div>
               </div>
               <div className="cf-pdf-flow-arrow">→</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-terms">
-                <div className="cf-pdf-flow-label">Payment Terms</div>
+                <div className="cf-pdf-flow-label">P/T</div>
                 <div className="cf-pdf-flow-value">{paymentTerms.length}건</div>
               </div>
               <div className="cf-pdf-flow-arrow">→</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-inv">
                 <div className="cf-pdf-flow-label">Invoice</div>
-                <div className="cf-pdf-flow-value">{fmtUSDCompact(totalInvoicedUSD)}</div>
+                <div className="cf-pdf-flow-value">{fmtUSD(totalInvoicedUSD)}</div>
               </div>
               <div className="cf-pdf-flow-arrow">→</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-recv">
                 <div className="cf-pdf-flow-label">Received</div>
-                <div className="cf-pdf-flow-value">{fmtUSDCompact(totalReceivedUSD)}</div>
+                <div className="cf-pdf-flow-value">{fmtUSD(totalReceivedUSD)}</div>
               </div>
               <div className="cf-pdf-flow-sep">|</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-purchase">
@@ -488,21 +471,127 @@ export default function CashFlowPdfPreview({ project, onClose }: CashFlowPdfPrev
               <div className="cf-pdf-flow-arrow">→</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-exp">
                 <div className="cf-pdf-flow-label">Expense</div>
-                <div className="cf-pdf-flow-value">{fmtUSDCompact(totalExpenseUSD)}</div>
-              </div>
-              <div className="cf-pdf-flow-arrow">→</div>
-              <div className="cf-pdf-flow-box cf-pdf-flow-paid">
-                <div className="cf-pdf-flow-label">Paid</div>
-                <div className="cf-pdf-flow-value">{fmtUSDCompact(totalPaidUSD)}</div>
+                <div className="cf-pdf-flow-value">{fmtUSD(totalExpenseUSD)}</div>
               </div>
               <div className="cf-pdf-flow-arrow">=</div>
               <div className="cf-pdf-flow-box cf-pdf-flow-net" style={{ borderColor: (totalReceivedUSD - totalPaidUSD) >= 0 ? '#10b981' : '#ef4444' }}>
-                <div className="cf-pdf-flow-label">Net</div>
+                <div className="cf-pdf-flow-label">Net Balance</div>
                 <div className="cf-pdf-flow-value" style={{ color: (totalReceivedUSD - totalPaidUSD) >= 0 ? '#10b981' : '#ef4444' }}>
-                  {fmtUSDCompact(totalReceivedUSD - totalPaidUSD)}
+                  {fmtUSD(totalReceivedUSD - totalPaidUSD)}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Page separator */}
+          <div className="cf-pdf-page-separator">— Page 2: Monthly Cash Flow Detail —</div>
+
+          {/* ========== PAGE 2: Monthly Detail with items ========== */}
+          <div ref={page2Ref} className="cf-pdf-page cf-pdf-page2">
+            {/* Header */}
+            <div className="cf-pdf-header">
+              <div className="cf-pdf-header-left">
+                <div className="cf-pdf-title">{project.name || 'Project'}</div>
+                <div className="cf-pdf-subtitle">Monthly Cash Flow Detail ({cumulativeData.length}개월)</div>
+              </div>
+              <div className="cf-pdf-header-right">
+                <div className="cf-pdf-meta">Project No. {project.projectNo || '-'}</div>
+                <div className="cf-pdf-meta">Date: {now.toISOString().split('T')[0]}</div>
+              </div>
+            </div>
+
+            {/* Monthly Detail Table - ALL months, full amounts, with item details */}
+            {cumulativeData.length > 0 && (
+              <div className="cf-pdf-p2-monthly">
+                <table className="cf-pdf-table cf-pdf-p2-table">
+                  <thead>
+                    <tr>
+                      <th className="cf-pdf-p2-month-th">Month</th>
+                      <th className="cf-pdf-p2-detail-th">수금 항목 (Income Details)</th>
+                      <th className="cf-pdf-p2-amt-th">수금액</th>
+                      <th className="cf-pdf-p2-detail-th">지출 항목 (Expense Details)</th>
+                      <th className="cf-pdf-p2-amt-th">지출액</th>
+                      <th className="cf-pdf-p2-amt-th">누적수금</th>
+                      <th className="cf-pdf-p2-amt-th">누적지출</th>
+                      <th className="cf-pdf-p2-amt-th">예상잔액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cumulativeData.map(d => {
+                      const items = getMonthItems(d.key);
+                      const income = d.expectedIncome + d.actualIncome;
+                      const expense = d.expectedExpense + d.actualExpense;
+                      const isCurrent = d.key === currentMonthKey;
+
+                      // Build income detail lines
+                      const incomeLines: { label: string; amount: number; type: string }[] = [];
+                      items.incExpected.forEach(inv => {
+                        const term = paymentTerms.find(t => t.id === inv.paymentTermId);
+                        incomeLines.push({ label: `[예상] ${term ? term.milestone : inv.invoiceNo || 'Invoice'}`, amount: inv.amountUSD, type: 'expected' });
+                      });
+                      items.incReceived.forEach(inv => {
+                        const term = paymentTerms.find(t => t.id === inv.paymentTermId);
+                        incomeLines.push({ label: `[실수금] ${term ? term.milestone : inv.invoiceNo || 'Invoice'}`, amount: inv.receivedAmount, type: 'actual' });
+                      });
+
+                      // Build expense detail lines
+                      const expenseLines: { label: string; amount: number; type: string }[] = [];
+                      items.expExpected.forEach(e => {
+                        expenseLines.push({ label: `[예상] ${e.partName} (${e.termLabel})`, amount: e.amountUSD, type: 'expected' });
+                      });
+                      items.expPaid.forEach(e => {
+                        expenseLines.push({ label: `[집행] ${e.partName} (${e.termLabel})`, amount: e.amountUSD, type: 'actual' });
+                      });
+
+                      return (
+                        <tr key={d.key} className={isCurrent ? 'cf-pdf-p2-current' : ''}>
+                          <td className="cf-pdf-p2-month">{d.label}</td>
+                          <td className="cf-pdf-p2-items">
+                            {incomeLines.length > 0 ? incomeLines.map((l, i) => (
+                              <div key={i} className={`cf-pdf-p2-item ${l.type === 'actual' ? 'cf-pdf-p2-item-actual' : ''}`}>
+                                <span className="cf-pdf-p2-item-name">{l.label}</span>
+                                <span className="cf-pdf-p2-item-amt">{fmtUSD(l.amount)}</span>
+                              </div>
+                            )) : <span className="cf-pdf-p2-dash">-</span>}
+                          </td>
+                          <td className="cf-pdf-p2-income-total">{income > 0 ? fmtUSD(income) : '-'}</td>
+                          <td className="cf-pdf-p2-items">
+                            {expenseLines.length > 0 ? expenseLines.map((l, i) => (
+                              <div key={i} className={`cf-pdf-p2-item ${l.type === 'actual' ? 'cf-pdf-p2-item-actual' : ''}`}>
+                                <span className="cf-pdf-p2-item-name">{l.label}</span>
+                                <span className="cf-pdf-p2-item-amt">{fmtUSD(l.amount)}</span>
+                              </div>
+                            )) : <span className="cf-pdf-p2-dash">-</span>}
+                          </td>
+                          <td className="cf-pdf-p2-expense-total">{expense > 0 ? fmtUSD(expense) : '-'}</td>
+                          <td className="cf-pdf-p2-cum-inc">{fmtUSD(d.cumExpInc + d.cumActInc)}</td>
+                          <td className="cf-pdf-p2-cum-exp">{fmtUSD(d.cumExpExp)}</td>
+                          <td className="cf-pdf-p2-balance" style={{ color: d.expectedBalance >= 0 ? '#10b981' : '#ef4444' }}>
+                            {fmtUSD(d.expectedBalance)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Totals */}
+                    <tr className="cf-pdf-p2-total">
+                      <td><strong>TOTAL</strong></td>
+                      <td></td>
+                      <td className="cf-pdf-p2-income-total"><strong>{fmtUSD(cumulativeData.reduce((s, d) => s + d.expectedIncome + d.actualIncome, 0))}</strong></td>
+                      <td></td>
+                      <td className="cf-pdf-p2-expense-total"><strong>{fmtUSD(cumulativeData.reduce((s, d) => s + d.expectedExpense + d.actualExpense, 0))}</strong></td>
+                      <td></td>
+                      <td></td>
+                      <td className="cf-pdf-p2-balance" style={{
+                        fontWeight: 800,
+                        color: cumulativeData.length > 0 && cumulativeData[cumulativeData.length - 1].expectedBalance >= 0 ? '#10b981' : '#ef4444'
+                      }}>
+                        <strong>{cumulativeData.length > 0 ? fmtUSD(cumulativeData[cumulativeData.length - 1].expectedBalance) : '-'}</strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
