@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { Project, BudgetItem, BudgetPart, BudgetSnapshot, QuotationCurrency } from '../types';
 import { useProjects } from '../context/ProjectContext';
 import EditableCell from './EditableCell';
+import CashFlowTab from './CashFlowTab';
 
 interface BudgetTabProps {
   project: Project;
@@ -44,6 +45,7 @@ function newGroupId() {
 
 export default function BudgetTab({ project }: BudgetTabProps) {
   const { projects, updateProject, addBudgetItem, updateBudgetItem, deleteBudgetItem, reorderBudgetItems, saveBudgetSnapshot, deleteBudgetSnapshot, loadBudgetSnapshot, resetBudgetItems, copyBudgetItemsFrom } = useProjects();
+  const [budgetSubTab, setBudgetSubTab] = useState<'budget' | 'cashflow'>('budget');
   const [collapsedParts, setCollapsedParts] = useState<Record<string, boolean>>({});
   const [showBudgetImport, setShowBudgetImport] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId: string } | null>(null);
@@ -628,6 +630,19 @@ export default function BudgetTab({ project }: BudgetTabProps) {
 
   return (
     <div className="budget-tab" onClick={() => setContextMenu(null)}>
+      {/* Sub-tabs */}
+      <div className="budget-subtabs">
+        <button className={`budget-subtab ${budgetSubTab === 'budget' ? 'active' : ''}`} onClick={() => setBudgetSubTab('budget')}>
+          예산 관리
+        </button>
+        <button className={`budget-subtab ${budgetSubTab === 'cashflow' ? 'active' : ''}`} onClick={() => setBudgetSubTab('cashflow')}>
+          Cash Flow
+        </button>
+      </div>
+
+      {budgetSubTab === 'cashflow' && <CashFlowTab project={project} />}
+
+      {budgetSubTab === 'budget' && <>
       {/* Budget Dashboard */}
       <div className="budget-dashboard">
         {/* Row 1: Exchange Rates & Contract */}
@@ -1024,6 +1039,7 @@ export default function BudgetTab({ project }: BudgetTabProps) {
           </div>
         );
       })()}
+      </>}
     </div>
   );
 }

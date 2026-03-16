@@ -78,6 +78,9 @@ export interface Project {
   budgetSnapshots: BudgetSnapshot[];
   masterSchedule: MasterScheduleTask[];
   scheduleSnapshots: ScheduleSnapshot[];
+  paymentTerms: PaymentTerm[];
+  cashFlowInvoices: CashFlowInvoice[];
+  cashFlowExpenses: CashFlowExpense[];
 }
 
 export interface ProjectItem {
@@ -266,6 +269,38 @@ export interface BudgetSnapshot {
   updatedContractAmountUSD: number;
   targetGM: number;
   budgetItems: BudgetItem[];
+}
+
+// Cash Flow Types
+export interface PaymentTerm {
+  id: string;
+  milestone: string;        // e.g. "계약금", "중도금1", "잔금"
+  percentage: number;        // e.g. 30 (%)
+  amountUSD: number;         // calculated or manual
+  expectedDate: string;      // expected payment date
+  description: string;
+}
+
+export interface CashFlowInvoice {
+  id: string;
+  paymentTermId: string;     // links to PaymentTerm
+  invoiceNo: string;
+  invoiceDate: string;       // invoice issued date
+  amountUSD: number;
+  receivedDate: string;      // actual received date
+  receivedAmount: number;    // actual received amount
+  notes: string;
+}
+
+export interface CashFlowExpense {
+  id: string;
+  description: string;
+  category: 'material' | 'engineering' | 'direct_cost' | 'contingency' | 'other';
+  amountUSD: number;
+  expectedDate: string;      // expected payment date
+  actualDate: string;        // actual payment date
+  paid: boolean;
+  notes: string;
 }
 
 // Translation Tool Types

@@ -42,6 +42,9 @@ export const sampleProjects: Project[] = [
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [],
+    cashFlowInvoices: [],
+    cashFlowExpenses: [],
     items: [
       {
         id: 'item-001',
@@ -149,6 +152,9 @@ export const sampleProjects: Project[] = [
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [],
+    cashFlowInvoices: [],
+    cashFlowExpenses: [],
     items: [
       {
         id: 'item-004',
@@ -224,6 +230,9 @@ export const sampleProjects: Project[] = [
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [],
+    cashFlowInvoices: [],
+    cashFlowExpenses: [],
     items: [
       {
         id: 'item-006',
@@ -305,6 +314,9 @@ export const sampleProjects: Project[] = [
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [],
+    cashFlowInvoices: [],
+    cashFlowExpenses: [],
     items: [
       {
         id: 'item-008',
@@ -362,6 +374,9 @@ export const sampleProjects: Project[] = [
     budgetSnapshots: [],
     masterSchedule: [],
     scheduleSnapshots: [],
+    paymentTerms: [],
+    cashFlowInvoices: [],
+    cashFlowExpenses: [],
     items: [
       {
         id: 'item-009',

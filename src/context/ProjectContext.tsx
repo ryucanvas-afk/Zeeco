@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot, MasterScheduleTask, ScheduleSnapshot } from '../types';
+import type { Project, ProjectItem, Schedule, Purchase, InspectionEntry, FactoryPurchase, SubItem, BudgetItem, BudgetSnapshot, MasterScheduleTask, ScheduleSnapshot, PaymentTerm, CashFlowInvoice, CashFlowExpense } from '../types';
 import { sampleProjects } from '../data/sampleData';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'zeeco-projects';
 
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -114,6 +114,34 @@ function migrateProjects(projects: Record<string, unknown>[]): Project[] {
       note: (t.note as string) || '',
     })),
     scheduleSnapshots: (p.scheduleSnapshots as Project['scheduleSnapshots']) || [],
+    paymentTerms: ((p.paymentTerms as Record<string, unknown>[]) || []).map((t: Record<string, unknown>) => ({
+      id: (t.id as string) || uuidv4(),
+      milestone: (t.milestone as string) || '',
+      percentage: (t.percentage as number) || 0,
+      amountUSD: (t.amountUSD as number) || 0,
+      expectedDate: (t.expectedDate as string) || '',
+      description: (t.description as string) || '',
+    })),
+    cashFlowInvoices: ((p.cashFlowInvoices as Record<string, unknown>[]) || []).map((inv: Record<string, unknown>) => ({
+      id: (inv.id as string) || uuidv4(),
+      paymentTermId: (inv.paymentTermId as string) || '',
+      invoiceNo: (inv.invoiceNo as string) || '',
+      invoiceDate: (inv.invoiceDate as string) || '',
+      amountUSD: (inv.amountUSD as number) || 0,
+      receivedDate: (inv.receivedDate as string) || '',
+      receivedAmount: (inv.receivedAmount as number) || 0,
+      notes: (inv.notes as string) || '',
+    })),
+    cashFlowExpenses: ((p.cashFlowExpenses as Record<string, unknown>[]) || []).map((exp: Record<string, unknown>) => ({
+      id: (exp.id as string) || uuidv4(),
+      description: (exp.description as string) || '',
+      category: (exp.category as CashFlowExpense['category']) || 'other',
+      amountUSD: (exp.amountUSD as number) || 0,
+      expectedDate: (exp.expectedDate as string) || '',
+      actualDate: (exp.actualDate as string) || '',
+      paid: (exp.paid as boolean) || false,
+      notes: (exp.notes as string) || '',
+    })),
     items: ((p.items as Record<string, unknown>[]) || []).map((i: Record<string, unknown>, idx: number) => ({
       id: (i.id as string) || uuidv4(),
       projectId: (i.projectId as string) || (p.id as string) || '',
@@ -220,6 +248,15 @@ interface ProjectContextType {
   saveScheduleSnapshot: (projectId: string, name: string) => void;
   loadScheduleSnapshot: (projectId: string, snapshotId: string) => void;
   deleteScheduleSnapshot: (projectId: string, snapshotId: string) => void;
+  addPaymentTerm: (projectId: string, term: Omit<PaymentTerm, 'id'>) => void;
+  updatePaymentTerm: (projectId: string, termId: string, updates: Partial<PaymentTerm>) => void;
+  deletePaymentTerm: (projectId: string, termId: string) => void;
+  addCashFlowInvoice: (projectId: string, invoice: Omit<CashFlowInvoice, 'id'>) => void;
+  updateCashFlowInvoice: (projectId: string, invoiceId: string, updates: Partial<CashFlowInvoice>) => void;
+  deleteCashFlowInvoice: (projectId: string, invoiceId: string) => void;
+  addCashFlowExpense: (projectId: string, expense: Omit<CashFlowExpense, 'id'>) => void;
+  updateCashFlowExpense: (projectId: string, expenseId: string, updates: Partial<CashFlowExpense>) => void;
+  deleteCashFlowExpense: (projectId: string, expenseId: string) => void;
   resetItems: (projectId: string) => void;
   copyItemsFrom: (targetProjectId: string, sourceProjectId: string) => void;
   resetBudgetItems: (projectId: string) => void;
@@ -310,7 +347,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProject = (project: Omit<Project, 'id' | 'items' | 'inspections' | 'inspectionCommonNotes' | 'factoryPurchases'>) => {
-    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], inspectionCommonNotes: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [], scheduleSnapshots: [] }]);
+    setProjects(prev => [...prev, { ...project, id: uuidv4(), items: [], inspections: [], inspectionCommonNotes: [], factoryPurchases: [], budgetItems: project.budgetItems || [], masterSchedule: [], scheduleSnapshots: [], paymentTerms: [], cashFlowInvoices: [], cashFlowExpenses: [] }]);
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {
@@ -748,6 +785,39 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Cash Flow: Payment Terms
+  const addPaymentTerm = (projectId: string, term: Omit<PaymentTerm, 'id'>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, paymentTerms: [...(p.paymentTerms || []), { ...term, id: uuidv4() }] }));
+  };
+  const updatePaymentTerm = (projectId: string, termId: string, updates: Partial<PaymentTerm>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, paymentTerms: (p.paymentTerms || []).map(t => t.id === termId ? { ...t, ...updates } : t) }));
+  };
+  const deletePaymentTerm = (projectId: string, termId: string) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, paymentTerms: (p.paymentTerms || []).filter(t => t.id !== termId) }));
+  };
+
+  // Cash Flow: Invoices
+  const addCashFlowInvoice = (projectId: string, invoice: Omit<CashFlowInvoice, 'id'>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowInvoices: [...(p.cashFlowInvoices || []), { ...invoice, id: uuidv4() }] }));
+  };
+  const updateCashFlowInvoice = (projectId: string, invoiceId: string, updates: Partial<CashFlowInvoice>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowInvoices: (p.cashFlowInvoices || []).map(inv => inv.id === invoiceId ? { ...inv, ...updates } : inv) }));
+  };
+  const deleteCashFlowInvoice = (projectId: string, invoiceId: string) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowInvoices: (p.cashFlowInvoices || []).filter(inv => inv.id !== invoiceId) }));
+  };
+
+  // Cash Flow: Expenses
+  const addCashFlowExpense = (projectId: string, expense: Omit<CashFlowExpense, 'id'>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowExpenses: [...(p.cashFlowExpenses || []), { ...expense, id: uuidv4() }] }));
+  };
+  const updateCashFlowExpense = (projectId: string, expenseId: string, updates: Partial<CashFlowExpense>) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowExpenses: (p.cashFlowExpenses || []).map(exp => exp.id === expenseId ? { ...exp, ...updates } : exp) }));
+  };
+  const deleteCashFlowExpense = (projectId: string, expenseId: string) => {
+    setProjects(prev => prev.map(p => p.id !== projectId ? p : { ...p, cashFlowExpenses: (p.cashFlowExpenses || []).filter(exp => exp.id !== expenseId) }));
+  };
+
   const reorderBudgetItems = (projectId: string, budgetItemIds: string[]) => {
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
@@ -775,6 +845,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       initializeDefaultSchedule, resetMasterSchedule, copyMasterScheduleFrom,
       addMasterTask, updateMasterTask, deleteMasterTask, reorderMasterTasks,
       saveScheduleSnapshot, loadScheduleSnapshot, deleteScheduleSnapshot,
+      addPaymentTerm, updatePaymentTerm, deletePaymentTerm,
+      addCashFlowInvoice, updateCashFlowInvoice, deleteCashFlowInvoice,
+      addCashFlowExpense, updateCashFlowExpense, deleteCashFlowExpense,
       resetItems, copyItemsFrom, resetBudgetItems, copyBudgetItemsFrom,
       reorderProjects, reorderItems,
       importData, resetData,
