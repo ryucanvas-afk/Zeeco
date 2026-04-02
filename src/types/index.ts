@@ -319,6 +319,22 @@ export interface CashFlowExpense {
   notes: string;
 }
 
+// Project Notes Types
+export type NoteColor = 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'pink';
+
+export interface NoteItem {
+  id: string;
+  projectId: string;
+  title: string;
+  content: string;
+  color: NoteColor;
+  hidden: boolean;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sortOrder: number;
+}
+
 // Translation Tool Types
 export interface SavedPhrase {
   id: string;

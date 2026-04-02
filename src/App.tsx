@@ -3,12 +3,14 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ProjectProvider, useProjects } from './context/ProjectContext';
 import { TranslationProvider } from './context/TranslationContext';
 import { TodoProvider } from './context/TodoContext';
+import { NoteProvider } from './context/NoteContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import Translation from './pages/Translation';
 import TodoList from './pages/TodoList';
+import NotesList from './pages/NotesList';
 
 function UrlDataLoader() {
   const { importData } = useProjects();
@@ -40,18 +42,21 @@ function App() {
     <ProjectProvider>
       <TranslationProvider>
         <TodoProvider>
-          <UrlDataLoader />
-          <HashRouter>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/projects" element={<ProjectList />} />
-                <Route path="/project/:id" element={<ProjectDetail />} />
-                <Route path="/translate" element={<Translation />} />
-                <Route path="/todos" element={<TodoList />} />
-              </Route>
-            </Routes>
-          </HashRouter>
+          <NoteProvider>
+            <UrlDataLoader />
+            <HashRouter>
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/projects" element={<ProjectList />} />
+                  <Route path="/project/:id" element={<ProjectDetail />} />
+                  <Route path="/translate" element={<Translation />} />
+                  <Route path="/todos" element={<TodoList />} />
+                  <Route path="/notes" element={<NotesList />} />
+                </Route>
+              </Routes>
+            </HashRouter>
+          </NoteProvider>
         </TodoProvider>
       </TranslationProvider>
     </ProjectProvider>
