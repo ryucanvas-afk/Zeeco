@@ -8,10 +8,11 @@ import PurchaseTab from '../components/PurchaseTab';
 import BudgetTab from '../components/BudgetTab';
 import InspectionTab from '../components/InspectionTab';
 import FactoryTab from '../components/FactoryTab';
+import ProjectNotesTab from '../components/ProjectNotesTab';
 import type { ItemStatus, ProjectStatus, ProcurementStatus, ItemManagementStatus, DeliveryScheduleEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-type TabType = 'overview' | 'schedule' | 'purchase' | 'budget' | 'inspection' | 'factory';
+type TabType = 'overview' | 'schedule' | 'purchase' | 'budget' | 'inspection' | 'factory' | 'notes';
 
 const ITEM_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1',
@@ -150,6 +151,7 @@ export default function ProjectDetail() {
     { key: 'budget', label: '예산 관리', show: true },
     { key: 'inspection', label: '검사 일정', show: true },
     { key: 'factory', label: '공장 관리', show: !!project.needsFactoryManagement },
+    { key: 'notes', label: '노트', show: true },
   ];
 
   return (
@@ -596,6 +598,7 @@ export default function ProjectDetail() {
         {activeTab === 'budget' && <BudgetTab project={project} />}
         {activeTab === 'inspection' && <InspectionTab project={project} />}
         {activeTab === 'factory' && project.needsFactoryManagement && <FactoryTab project={project} />}
+        {activeTab === 'notes' && <ProjectNotesTab project={project} />}
       </div>
     </div>
   );
